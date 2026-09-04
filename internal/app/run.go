@@ -40,7 +40,15 @@ func (a *App) Run(ctx context.Context) error {
 		case ts, ok := <-a.SignalChan:
 			if !ok {
 				// SignalChan was closed
-				break
+				return nil
+			}
+
+			// Handle initial state when lastTS is nil
+			if lastTS == nil {
+				if ts.Track.Title == "" {
+					// Ignore status-only signals (Play/Pause) before we ever receive track metadata
+					continue
+				}
 			}
 
 			diff := lastTS.Compare(ts)
@@ -88,20 +96,24 @@ func (a *App) Run(ctx context.Context) error {
 						}
 					}
 				}()
+
 			case signal.Resumed:
-				l.Lock()
-				stored := l.Stored(&lastTS.Track)
-				l.Unlock()
-				if !stored {
-					a.Print(colorYellow, TrackUnableToResume, &lastTS.Track)
+				if lastTS != nil {
+					l.Lock()
+					stored := l.Stored(&lastTS.Track)
+					l.Unlock()
+					if !stored {
+						a.Print(colorYellow, TrackUnableToResume, &lastTS.Track)
+					}
 				}
+
 			case signal.None:
 			}
 
-			if ts.Title != "" {
-				lastTS = ts
-			} else {
+			if ts.Track.Title == "" && lastTS != nil {
 				lastTS.Status = ts.Status
+			} else {
+				lastTS = ts
 			}
 		}
 	}
