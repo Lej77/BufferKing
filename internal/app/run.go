@@ -141,7 +141,11 @@ func (a *App) Run(ctx context.Context) error {
 			case signal.None:
 			}
 
-			if ts.Track.Title == "" && lastTS != nil {
+			if diff != signal.NewTrack && lastTS != nil {
+				// preserve old info except for new changes
+				if ts.Track.Title != "" {
+					lastTS.Track = ts.Track
+				}
 				if ts.Status != signal.None {
 					lastTS.Status = ts.Status
 				}
@@ -152,15 +156,6 @@ func (a *App) Run(ctx context.Context) error {
 					lastTS.HasSeek = true
 				}
 			} else {
-				if diff != signal.NewTrack && lastTS != nil {
-					// preserve some info
-					if ts.Started.IsZero() {
-						ts.Started = lastTS.Started
-					}
-					if lastTS.HasSeek {
-						ts.HasSeek = true
-					}
-				}
 				lastTS = ts
 			}
 		}
