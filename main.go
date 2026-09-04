@@ -21,7 +21,7 @@ func main() {
 
 	// Does the machine have the parec binary for us to use?
 	if !parec.Available() {
-		fmt.Println("parec installation not found")
+		fmt.Println("parec or pactl installation not found")
 		return
 	}
 

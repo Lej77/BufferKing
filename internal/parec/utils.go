@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"io"
 	"os/exec"
-	"regexp"
 	"strings"
 )
 
 func Available() bool {
 	_, err := exec.LookPath("parec")
-	return err == nil
+	_, err2 := exec.LookPath("pactl")
+	return err == nil && err2 == nil
 }
 
 func Formats() ([]string, error) {
@@ -52,25 +52,30 @@ func Formats() ([]string, error) {
 }
 
 func Sources() ([]string, error) {
-	re := regexp.MustCompile(`<(.+\.monitor)`)
-
-	cmd := exec.Command("pacmd", "list")
+	// pactl works for both PipeWire and PulseAudio
+	cmd := exec.Command("pactl", "list", "sources", "short")
 	outputBytes, err := cmd.Output()
 	if err != nil {
 		return nil, err
 	}
 
 	hashmap := map[string]struct{}{}
-	for _, rawSource := range re.FindAllSubmatch(outputBytes, -1) {
-		// rawSource is of type [][]byte where the first element is the entire matching string
-		if len(rawSource) != 2 {
-			continue
+	lines := strings.Split(string(outputBytes), "\n")
+
+	for _, line := range lines {
+		fields := strings.Fields(line)
+		// Format: ID  NAME  MODULE  SAMPLE_SPEC  STATE
+		if len(fields) >= 2 {
+			sourceName := fields[1]
+			// Capture monitor streams or input devices
+			if strings.HasSuffix(sourceName, ".monitor") {
+				hashmap[sourceName] = struct{}{}
+			}
 		}
-		hashmap[string(rawSource[1])] = struct{}{}
 	}
 
-	sources := []string{}
-	for source, _ := range hashmap {
+	sources := make([]string, 0, len(hashmap))
+	for source := range hashmap {
 		sources = append(sources, source)
 	}
 
