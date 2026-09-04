@@ -143,9 +143,7 @@ func (a *App) Run(ctx context.Context) error {
 
 			if diff != signal.NewTrack && lastTS != nil && lastTS.MediaPlayerName == ts.MediaPlayerName {
 				// preserve old info except for new changes
-				if ts.Track.Title != "" {
-					lastTS.Track = ts.Track
-				}
+				lastTS.Track.UpdateTrack(&ts.Track)
 				if ts.Status != signal.None {
 					lastTS.Status = ts.Status
 				}

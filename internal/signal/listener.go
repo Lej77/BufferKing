@@ -158,7 +158,11 @@ func (l *Listener) Start(ctx context.Context) error {
 				}
 				latest.MediaPlayerName = ts.MediaPlayerName
 				if ts.Track.Title != "" {
-					latest.Track = ts.Track
+					if latest.Track.IsSameTrackAs(&ts.Track) {
+						latest.Track.UpdateTrack(&ts.Track)
+					} else {
+						latest.Track = ts.Track
+					}
 				}
 				if ts.Status != None {
 					latest.Status = ts.Status

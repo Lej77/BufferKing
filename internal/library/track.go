@@ -30,6 +30,56 @@ func (t *Track) RelPath() string {
 	return filepath.Join(t.Artist, t.Album, fmt.Sprintf("%d - %s%s", t.TrackNumber, t.Title, ext))
 }
 
+func (t *Track) IsSameTrackAs(other *Track) bool {
+	return t != nil && other != nil &&
+		t.Title != "" &&
+		t.Title == other.Title &&
+		t.Artist == other.Artist &&
+		t.Album == other.Album
+}
+
+func (t *Track) UpdateTrack(other *Track) {
+	if t == nil || other == nil {
+		return
+	}
+	if other.Title != "" {
+		t.Title = other.Title
+	}
+	if other.Artist != "" {
+		t.Artist = other.Artist
+	}
+	if other.AlbumArtist != "" {
+		t.AlbumArtist = other.AlbumArtist
+	}
+	if other.Album != "" {
+		t.Album = other.Album
+	}
+	if other.TrackNumber != 0 {
+		t.TrackNumber = other.TrackNumber
+	}
+	if other.DiscNumber != 0 {
+		t.DiscNumber = other.DiscNumber
+	}
+	if other.Length != 0 {
+		t.Length = other.Length
+	}
+	if other.ArtURL != "" {
+		t.ArtURL = other.ArtURL
+	}
+	if other.URL != "" {
+		t.URL = other.URL
+	}
+	if other.TrackID != "" {
+		t.TrackID = other.TrackID
+	}
+	if other.AutoRating > 0 {
+		t.AutoRating = other.AutoRating
+	}
+	if other.Format != "" {
+		t.Format = other.Format
+	}
+}
+
 func (t *Track) SimpleString() string {
 	return fmt.Sprintf("Artist: %s\t Album: %s\t Track #%d\t Title: %s\t Length: %s",
 		t.Artist, t.Album, t.TrackNumber, t.Title, t.Length)

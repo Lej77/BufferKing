@@ -77,12 +77,7 @@ func (t *TrackSignal) Compare(tt *TrackSignal) Status {
 
 	hasNewMetadata := tt.Track.Title != "" || tt.Track.Artist != ""
 	if hasNewMetadata {
-		sameTrack := t.Title == tt.Title
-		sameTrack = sameTrack && t.Artist == tt.Artist
-		sameTrack = sameTrack && t.Album == tt.Album
-		sameTrack = sameTrack && t.TrackNumber == tt.TrackNumber
-		sameTrack = sameTrack && t.Length == tt.Length
-		if !sameTrack {
+		if !t.Track.IsSameTrackAs(&tt.Track) {
 			return NewTrack
 		}
 	}
