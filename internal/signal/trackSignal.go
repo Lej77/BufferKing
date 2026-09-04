@@ -80,7 +80,7 @@ func (t *TrackSignal) Compare(tt *TrackSignal) Status {
 	if t.HasSeek != tt.HasSeek && tt.HasSeek {
 		return Seek
 	}
-	if !tt.Started.IsZero() && tt.Started != t.Started {
+	if !tt.Started.IsZero() && !tt.Started.Equal(t.Started) {
 		return NewTrack
 	}
 
