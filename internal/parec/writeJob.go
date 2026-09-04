@@ -168,7 +168,7 @@ func (wj *WriteJob) EmbedMetadata() error {
 
 	p := wj.parec
 	t := wj.Track
-	t.Format = p.Format
+	t.Format = strings.ToLower(p.Format)
 
 	// Paths
 	dir := filepath.Dir(filepath.Join(p.Root, t.RelPath()))
@@ -179,25 +179,33 @@ func (wj *WriteJob) EmbedMetadata() error {
 	tempArtPath := filepath.Join(dir, fmt.Sprintf(".art_%d.jpg", time.Now().UnixNano()))
 	albumCoverPath := filepath.Join(dir, "cover.jpg")
 
+	// Ogg containers do not support attached_pic streams with stream copy (-c copy).
+	supportsAttachedPic := t.Format == "mp3" || t.Format == "m4a" || t.Format == "flac" || t.Format == "mkv"
+
 	hasCover := false
 	if t.ArtURL != "" {
-		if err := downloadArt(t.ArtURL, tempArtPath); err == nil {
-			hasCover = true
-			defer os.Remove(tempArtPath) // Clean up image download when done
+		_, coverErr := os.Stat(albumCoverPath)
+		missingFolderCover := os.IsNotExist(coverErr)
 
-			// Save/copy to cover.jpg in the album folder if it doesn't already exist
-			if _, err := os.Stat(albumCoverPath); os.IsNotExist(err) {
-				_ = copyFile(tempArtPath, albumCoverPath)
+		// Download art if we need it for embedding or as album cover.jpg
+		if missingFolderCover || supportsAttachedPic {
+			if err := downloadArt(t.ArtURL, tempArtPath); err == nil {
+				hasCover = true
+				defer os.Remove(tempArtPath) // Clean up image download when done
+
+				if missingFolderCover {
+					_ = copyFile(tempArtPath, albumCoverPath)
+				}
 			}
 		}
 	}
 
 	args := []string{"-y", "-i", originalPath}
 
-	// Add cover art input if available
-	if hasCover {
-		args = append(args, "-i", tempArtPath)
+	// Add cover art input if possible
+	if hasCover && supportsAttachedPic {
 		args = append(args,
+			"-i", tempArtPath,
 			"-map", "0:a", // Use audio from first input (recorded file)
 			"-map", "1:v", // Use image from second input (album art)
 			"-disposition:v:0", "attached_pic",
@@ -206,7 +214,7 @@ func (wj *WriteJob) EmbedMetadata() error {
 		args = append(args, "-map", "0:a")
 	}
 
-	// Standard Universal Tags
+	// Standard metadata tags
 	args = append(args,
 		"-metadata", fmt.Sprintf("title=%s", t.Title),
 		"-metadata", fmt.Sprintf("artist=%s", t.Artist),
@@ -216,8 +224,8 @@ func (wj *WriteJob) EmbedMetadata() error {
 		"-metadata", fmt.Sprintf("disc=%d", t.DiscNumber),
 	)
 
+	// Comments metadata
 	var comments []string
-
 	if t.URL != "" {
 		comments = append(comments, "URL: "+t.URL)
 	}
@@ -227,28 +235,30 @@ func (wj *WriteJob) EmbedMetadata() error {
 	if t.ArtURL != "" {
 		comments = append(comments, "Art URL: "+t.ArtURL)
 	}
-
 	if len(comments) > 0 {
 		args = append(args, "-metadata", fmt.Sprintf("comment=%s", strings.Join(comments, "\n")))
 	}
 
-	// Add rating metadata if present (auto rating 0.0 - 1.0 mapped to 0-100)
-	if t.AutoRating > 0 && t.AutoRating <= 1 {
-		args = append(args, "-metadata", fmt.Sprintf("rating=%d", int(t.AutoRating*100)))
-	} else if t.AutoRating > 0 && t.AutoRating <= 100 {
-		args = append(args, "-metadata", fmt.Sprintf("rating=%d", int(t.AutoRating)))
+	// Rating metadata (normalized to 0-100 scale)
+	if t.AutoRating > 0 {
+		rating := t.AutoRating
+		if rating <= 1 {
+			rating *= 100
+		}
+		if rating <= 100 {
+			args = append(args, "-metadata", fmt.Sprintf("rating=%d", int(rating)))
+		}
 	}
 
-	// Direct stream copy (no re-encoding)
+	// Stream copy to preserve audio quality without re-encoding
 	args = append(args, "-c", "copy", tempTaggedPath)
 
 	cmd := exec.Command("ffmpeg", args...)
-	output, err := cmd.CombinedOutput()
-	if err != nil {
+	if output, err := cmd.CombinedOutput(); err != nil {
 		return fmt.Errorf("ffmpeg tagging failed: %w (output: %s)", err, string(output))
 	}
 
-	// Replace original file with tagged version
+	// Atomic replace of the original file with the tagged version
 	if err := os.Rename(tempTaggedPath, originalPath); err != nil {
 		return fmt.Errorf("failed to finalize tagged file: %w", err)
 	}
