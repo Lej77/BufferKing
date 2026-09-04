@@ -82,7 +82,7 @@ func main() {
 	if c.Device == "" {
 		c.Device, err = source()
 		if err != nil {
-			fmt.Println(err)
+			fmt.Println("Failed to select audio source: ", err)
 			return
 		}
 	}
