@@ -8,7 +8,7 @@ Record your computers audio output to an audio library.
 Ensure your Go binary directory (`~/go/bin`) is in your system `$PATH`, then run:
 
 ```bash
-go install github.com/Lej77/BufferKing@latest
+GOPROXY=direct go install github.com/Lej77/BufferKing@latest
 ```
 
 ### About
