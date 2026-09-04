@@ -8,9 +8,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/raphaelreyna/BufferKing/internal/library"
-	"github.com/raphaelreyna/BufferKing/internal/parec"
-	"github.com/raphaelreyna/BufferKing/internal/signal"
+	"github.com/Lej77/BufferKing/internal/library"
+	"github.com/Lej77/BufferKing/internal/parec"
+	"github.com/Lej77/BufferKing/internal/signal"
 )
 
 type Conf struct {

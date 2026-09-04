@@ -2,7 +2,8 @@ package parec
 
 import (
 	"context"
-	"github.com/raphaelreyna/BufferKing/internal/library"
+
+	"github.com/Lej77/BufferKing/internal/library"
 )
 
 const (

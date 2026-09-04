@@ -1,4 +1,4 @@
-module github.com/raphaelreyna/BufferKing
+module github.com/Lej77/BufferKing
 
 go 1.18
 

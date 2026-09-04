@@ -9,9 +9,9 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/raphaelreyna/BufferKing/internal/app"
-	"github.com/raphaelreyna/BufferKing/internal/parec"
-	"github.com/raphaelreyna/BufferKing/internal/signal"
+	"github.com/Lej77/BufferKing/internal/app"
+	"github.com/Lej77/BufferKing/internal/parec"
+	"github.com/Lej77/BufferKing/internal/signal"
 	flag "github.com/spf13/pflag"
 )
 

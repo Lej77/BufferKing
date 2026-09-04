@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/Lej77/BufferKing/internal/library"
 	dbus "github.com/godbus/dbus/v5"
-	"github.com/raphaelreyna/BufferKing/internal/library"
 )
 
 type Parser struct {
