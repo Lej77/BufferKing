@@ -102,6 +102,9 @@ func (a *App) finishWJ(wj *parec.WriteJob, saveIncomplete bool, failMsg string) 
 				if err := os.Remove(path); err != nil {
 					return err
 				}
+			} else {
+				// If not removing partials then save metadata for them:
+				wj.EmbedMetadata()
 			}
 			a.Print(colorYellow, failMsg, nil)
 		}

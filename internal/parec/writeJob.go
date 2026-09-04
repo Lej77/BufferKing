@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/raphaelreyna/BufferKing/internal/library"
@@ -214,19 +215,20 @@ func (wj *WriteJob) EmbedMetadata() error {
 		"-metadata", fmt.Sprintf("disc=%d", t.DiscNumber),
 	)
 
-	// Format-Specific URL and Comment Tag Mapping
-	commentNewLine := ""
+	var comments []string
+
 	if t.URL != "" {
-		args = append(args, "-metadata", fmt.Sprintf("comment=%sURL: %s", commentNewLine, t.URL))
-		commentNewLine = "\n"
+		comments = append(comments, "URL: "+t.URL)
 	}
 	if t.TrackID != "" {
-		args = append(args, "-metadata", fmt.Sprintf("comment=%sTrackId: %s", commentNewLine, t.TrackID))
-		commentNewLine = "\n"
+		comments = append(comments, "TrackId: "+t.TrackID)
 	}
 	if t.ArtURL != "" {
-		args = append(args, "-metadata", fmt.Sprintf("comment=%sArt URL: %s", commentNewLine, t.TrackID))
-		commentNewLine = "\n"
+		comments = append(comments, "Art URL: "+t.ArtURL)
+	}
+
+	if len(comments) > 0 {
+		args = append(args, "-metadata", fmt.Sprintf("comment=%s", strings.Join(comments, "\n")))
 	}
 
 	// Add rating metadata if present (auto rating 0.0 - 1.0 mapped to 0-100)
