@@ -18,7 +18,7 @@ type Conf struct {
 	SaveIncompletePaused  bool
 	SaveIncompleteSkipped bool
 	SaveIncompleteQuit    bool
-	RemovePartials        bool
+	KeepPartials          bool
 	AllowedDomains        []string
 	AllowNoUrl            bool
 	AllowFileUrl          bool
@@ -137,7 +137,7 @@ func (a *App) finishWJ(wj *parec.WriteJob, saveIncomplete bool, failMsg string) 
 					return err
 				}
 				l.Unlock()
-			} else if a.Conf.RemovePartials {
+			} else if !a.Conf.KeepPartials {
 				path := filepath.Join(a.Conf.Root,
 					wj.Track.Artist,
 					wj.Track.Album,
@@ -147,7 +147,7 @@ func (a *App) finishWJ(wj *parec.WriteJob, saveIncomplete bool, failMsg string) 
 					return err
 				}
 			} else {
-				// If not removing partials then save metadata for them:
+				// If keeping partials then save metadata for them:
 				wj.EmbedMetadata()
 			}
 			a.Print(colorYellow, failMsg, nil)
