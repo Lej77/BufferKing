@@ -46,6 +46,7 @@ func (a *App) Run(ctx context.Context) error {
 			}
 
 			diff := lastTS.Compare(ts)
+			// fmt.Println("Buffered Signal - Diff is ", diff, " - Info ", ts)
 			switch diff {
 			case signal.NewTrack:
 				if ts.Started.IsZero() {

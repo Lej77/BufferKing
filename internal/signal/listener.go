@@ -103,7 +103,7 @@ func (l *Listener) Start(ctx context.Context) error {
 				}
 
 				ts, err := l.Parse(sig)
-				// fmt.Println("Signal ", sig, "\n\tparsed as: ", ts, "")
+				// fmt.Println("Raw Signal ", sig, "\n\tparsed as: ", ts, "")
 				if err != nil {
 					// Log the ignored signal and keep listening
 					fmt.Println("failed to parse signal, ignoring it: ", err)

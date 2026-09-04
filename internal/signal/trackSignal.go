@@ -66,9 +66,6 @@ func (t *TrackSignal) Compare(tt *TrackSignal) Status {
 	}
 	// both t and tt are non null:
 
-	if t.HasSeek != tt.HasSeek {
-		return Seek
-	}
 	hasNewMetadata := tt.Track.Title != "" || tt.Track.Artist != ""
 	if hasNewMetadata {
 		sameTrack := t.Title == tt.Title
@@ -79,6 +76,9 @@ func (t *TrackSignal) Compare(tt *TrackSignal) Status {
 		if !sameTrack {
 			return NewTrack
 		}
+	}
+	if t.HasSeek != tt.HasSeek && tt.HasSeek {
+		return Seek
 	}
 	if !tt.Started.IsZero() && tt.Started != t.Started {
 		return NewTrack
