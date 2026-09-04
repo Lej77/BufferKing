@@ -11,12 +11,18 @@ import (
 type Parser struct {
 	MetaDataKey string
 
-	TitleKey    string
-	ArtistKey   string
-	AlbumKey    string
-	TrackNumber string
-	LengthKey   string
-	LengthUnit  time.Duration
+	TitleKey       string
+	ArtistKey      string
+	AlbumKey       string
+	AlbumArtistKey string
+	TrackNumber    string
+	DiscNumber     string
+	AutoRating     string
+	LengthKey      string
+	LengthUnit     time.Duration
+	ArtUrlKey      string
+	UrlKey         string
+	TrackIdKey     string
 
 	StatusKey  string
 	PlayToken  string
@@ -25,16 +31,22 @@ type Parser struct {
 
 func DefaultParser() *Parser {
 	return &Parser{
-		MetaDataKey: "Metadata",
-		TitleKey:    "xesam:title",
-		ArtistKey:   "xesam:artist",
-		AlbumKey:    "xesam:album",
-		TrackNumber: "xesam:trackNumber",
-		LengthKey:   "mpris:length",
-		LengthUnit:  time.Microsecond,
-		StatusKey:   "PlaybackStatus",
-		PlayToken:   "Playing",
-		PauseToken:  "Paused",
+		MetaDataKey:    "Metadata",
+		TitleKey:       "xesam:title",
+		ArtistKey:      "xesam:artist",
+		AlbumKey:       "xesam:album",
+		AlbumArtistKey: "xesam:albumArtist",
+		TrackNumber:    "xesam:trackNumber",
+		DiscNumber:     "xesam:discNumber",
+		AutoRating:     "xesam:autoRating",
+		LengthKey:      "mpris:length",
+		LengthUnit:     time.Microsecond,
+		ArtUrlKey:      "mpris:artUrl",
+		UrlKey:         "xesam:url",
+		TrackIdKey:     "mpris:trackid",
+		StatusKey:      "PlaybackStatus",
+		PlayToken:      "Playing",
+		PauseToken:     "Paused",
 	}
 }
 
@@ -52,7 +64,7 @@ func (p *Parser) Parse(sign *dbus.Signal) (*TrackSignal, error) {
 	hasMetadata := false
 	hasStatus := false
 
-	// 1. Extract Playback Status if present
+	// Extract Playback Status if present
 	var stat Status = Play
 	if statusVar, ok := resp[p.StatusKey]; ok && statusVar.Value() != nil {
 		if sstat, ok := statusVar.Value().(string); ok {
@@ -66,31 +78,35 @@ func (p *Parser) Parse(sign *dbus.Signal) (*TrackSignal, error) {
 		}
 	}
 
-	// 2. Extract Track Details if Metadata is present
+	// Extract Track Details if Metadata is present
 	var track library.Track
 	if metaVar, ok := resp[p.MetaDataKey]; ok && metaVar.Value() != nil {
 		if md, ok := metaVar.Value().(map[string]dbus.Variant); ok {
 			hasMetadata = true
-
 			// fmt.Println("--- DBUS METADATA KEYS ---")
 			// for k, v := range md {
 			// 	fmt.Printf("Key: %q | Type: %T | Value: %#v\n", k, v.Value(), v.Value())
 			// }
 			// fmt.Println("--------------------------")
 
+			// Basic Tags
 			track.Title, _ = parseString(md, p.TitleKey)
 			track.Artist, _ = parseFirstString(md, p.ArtistKey)
+			track.AlbumArtist, _ = parseFirstString(md, p.AlbumArtistKey)
 			track.Album, _ = parseString(md, p.AlbumKey)
+
+			// Numbers
 			track.TrackNumber = parseInt32(md, p.TrackNumber)
-			lengthMicros := parseInt64(md, p.LengthKey)
+			track.DiscNumber = parseInt32(md, p.DiscNumber)
+			track.AutoRating = parseFloat64(md, p.AutoRating)
 
-			// Fallback to time.Microsecond if p.LengthUnit is unset (0)
-			unit := p.LengthUnit
-			if unit == 0 {
-				unit = time.Microsecond
-			}
+			// URLs & IDs
+			track.ArtURL, _ = parseString(md, p.ArtUrlKey)
+			track.URL, _ = parseString(md, p.UrlKey)
+			track.TrackID, _ = parseString(md, p.TrackIdKey)
 
-			track.Length = time.Duration(lengthMicros) * unit
+			// Duration
+			track.Length = time.Duration(parseInt64(md, p.LengthKey)) * p.LengthUnit
 		}
 	}
 
@@ -146,51 +162,43 @@ func parseFirstString(m map[string]dbus.Variant, key string) (string, error) {
 
 func parseInt32(m map[string]dbus.Variant, key string) int32 {
 	if v, ok := m[key]; ok && v.Value() != nil {
-		if val, ok := v.Value().(int32); ok {
-			return val
-		}
-		if val, ok := v.Value().(int); ok {
-			return int32(val)
+		switch num := v.Value().(type) {
+		case int32:
+			return num
+		case int:
+			return int32(num)
+		case uint32:
+			return int32(num)
+		case int64:
+			return int32(num)
 		}
 	}
 	return 0
 }
 
-func parseInt64(m map[string]dbus.Variant, key string) int64 {
-	v, ok := m[key]
-	if !ok {
-		return 0
-	}
-
-	val := v.Value()
-
-	// Unwrap nested dbus.Variant wrappers if present
-	for {
-		if inner, ok := val.(dbus.Variant); ok {
-			val = inner.Value()
-		} else {
-			break
+func parseFloat64(m map[string]dbus.Variant, key string) float64 {
+	if v, ok := m[key]; ok && v.Value() != nil {
+		if val, ok := v.Value().(float64); ok {
+			return val
 		}
 	}
+	return 0.0
+}
 
-	if val == nil {
-		return 0
+func parseInt64(m map[string]dbus.Variant, key string) int64 {
+	if v, ok := m[key]; ok && v.Value() != nil {
+		switch num := v.Value().(type) {
+		case uint64:
+			return int64(num)
+		case int64:
+			return num
+		case int32:
+			return int64(num)
+		case uint32:
+			return int64(num)
+		case int:
+			return int64(num)
+		}
 	}
-
-	switch num := val.(type) {
-	case uint64:
-		return int64(num)
-	case int64:
-		return num
-	case uint32:
-		return int64(num)
-	case int32:
-		return int64(num)
-	case int:
-		return int64(num)
-	case float64:
-		return int64(num)
-	}
-
 	return 0
 }

@@ -74,5 +74,5 @@ func (t *TrackSignal) Compare(tt *TrackSignal) Status {
 }
 
 func (t *TrackSignal) String() string {
-	return fmt.Sprintf("%s - %s", t.Status, t.Track)
+	return fmt.Sprintf("%s - %s", t.Status, &t.Track)
 }
