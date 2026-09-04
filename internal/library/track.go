@@ -23,6 +23,6 @@ func (t *Track) RelPath() string {
 	return filepath.Join(t.Artist, t.Album, fmt.Sprintf("%d - %s%s", t.TrackNumber, t.Title, ext))
 }
 
-func (t *Track) String() string {
+func (t Track) String() string {
 	return fmt.Sprintf("Artist: %s\t Album: %s\t Title: %s\t Length: %s", t.Artist, t.Album, t.Title, t.Length)
 }
