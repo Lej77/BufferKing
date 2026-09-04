@@ -44,20 +44,30 @@ type TrackSignal struct {
 
 // Compare compares the old tracksignal to the new tracksignal
 func (t *TrackSignal) Compare(tt *TrackSignal) Status {
-	if t == nil && tt != nil {
-		if tt.Status == Play {
+	if t == nil && tt == nil {
+		return None
+	}
+	hasNewMetadata := tt.Track.Title != "" || tt.Track.Artist != ""
+	if t == nil {
+		// First signal received
+		if tt.Status == Play && hasNewMetadata {
 			return NewTrack
 		}
 		return Paused
+	} else if tt == nil {
+		// Can't assume audio is still playing
+		return Paused
 	}
 
-	sameTrack := t.Title == tt.Title
-	sameTrack = sameTrack && t.Artist == tt.Artist
-	sameTrack = sameTrack && t.Album == tt.Album
-	sameTrack = sameTrack && t.TrackNumber == tt.TrackNumber
-	sameTrack = sameTrack && t.Length == tt.Length
-	if !sameTrack {
-		return NewTrack
+	if hasNewMetadata {
+		sameTrack := t.Title == tt.Title
+		sameTrack = sameTrack && t.Artist == tt.Artist
+		sameTrack = sameTrack && t.Album == tt.Album
+		sameTrack = sameTrack && t.TrackNumber == tt.TrackNumber
+		sameTrack = sameTrack && t.Length == tt.Length
+		if !sameTrack {
+			return NewTrack
+		}
 	}
 
 	return t.Status - tt.Status

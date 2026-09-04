@@ -22,15 +22,14 @@ func (a *App) Run(ctx context.Context) error {
 	}
 
 	for ts := range a.SignalChan {
-		//fmt.Println(ts)
-		l.Lock()
-		stored := l.Stored(&ts.Track)
-		l.Unlock()
-
 		diff := lastTS.Compare(ts)
-		//fmt.Println(diff)
+		// fmt.Printf("Diff: %s\t Signal: %s\n", diff, ts)
 		switch diff {
 		case signal.NewTrack:
+			l.Lock()
+			stored := l.Stored(&ts.Track)
+			l.Unlock()
+
 			var finishedWJ *parec.WriteJob
 			var printFunc MsgPrinter
 			if stored {
@@ -67,13 +66,20 @@ func (a *App) Run(ctx context.Context) error {
 				}
 			}()
 		case signal.Resumed:
+			l.Lock()
+			stored := l.Stored(&lastTS.Track)
+			l.Unlock()
 			if !stored {
-				a.Print(colorYellow, TrackUnableToResume, &ts.Track)
+				a.Print(colorYellow, TrackUnableToResume, &lastTS.Track)
 			}
 		case signal.None:
 		}
 
-		lastTS = ts
+		if ts.Title != "" {
+			lastTS = ts
+		} else {
+			lastTS.Status = ts.Status
+		}
 	}
 
 	return err
