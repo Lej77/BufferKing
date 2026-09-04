@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"fmt"
+
 	"github.com/raphaelreyna/BufferKing/internal/parec"
 	"github.com/raphaelreyna/BufferKing/internal/signal"
 )
@@ -35,6 +36,9 @@ func (a *App) Run(ctx context.Context) error {
 			if stored {
 				finishedWJ, err = p.StopWriteJob()
 				printFunc = a.NewPrinter(colorCyan, TrackFoundIgnoring, &ts.Track)
+			} else if !a.Conf.IsAllowedDomain(ts.Track.URL) {
+				finishedWJ, err = p.StopWriteJob()
+				printFunc = a.NewPrinter(colorYellow, UrlDisallowedIgnoring, &ts.Track)
 			} else {
 				finishedWJ, err = p.NewWriteJob(context.TODO(), &ts.Track, true)
 				printFunc = a.NewPrinter(colorRed, TrackStartedRecording, &ts.Track)

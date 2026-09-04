@@ -3,11 +3,14 @@ package app
 import (
 	"context"
 	"fmt"
+	"net/url"
+	"os"
+	"path/filepath"
+	"strings"
+
 	"github.com/raphaelreyna/BufferKing/internal/library"
 	"github.com/raphaelreyna/BufferKing/internal/parec"
 	"github.com/raphaelreyna/BufferKing/internal/signal"
-	"os"
-	"path/filepath"
 )
 
 type Conf struct {
@@ -15,6 +18,8 @@ type Conf struct {
 	SaveIncompletesPaused  bool
 	SaveIncompletesSkipped bool
 	RemovePartials         bool
+	AllowedDomains         []string
+	AllowNoUrl             bool
 	// ObjectPath points to the dbus object we're listening to.
 	// default: /org/mpris/MediaPlayer2
 	ObjectPath string
@@ -23,6 +28,31 @@ type Conf struct {
 	Device string
 	Format string
 	Color  bool
+}
+
+// IsAllowedDomain checks if the URL matches any allowed domains.
+// Returns true if no domains are specified (allow all by default).
+func (c *Conf) IsAllowedDomain(rawURL string) bool {
+	if len(c.AllowedDomains) == 0 {
+		return true
+	}
+	if rawURL == "" {
+		return c.AllowNoUrl
+	}
+
+	parsed, err := url.Parse(rawURL)
+	if err != nil || parsed.Host == "" {
+		return c.AllowNoUrl
+	}
+
+	host := strings.ToLower(parsed.Host)
+	for _, domain := range c.AllowedDomains {
+		if strings.HasSuffix(host, strings.ToLower(domain)) {
+			return true
+		}
+	}
+
+	return false
 }
 
 type App struct {
@@ -131,6 +161,7 @@ const (
 	UnableToCompletePause = "unable to complete recording track due to pause"
 
 	TrackFoundIgnoring    = "track found in library, ignoring:"
+	UrlDisallowedIgnoring = "track from disallowed URL, ignoring:"
 	TrackStartedRecording = "started recording new track:"
 	TrackUnableToResume   = "unable to resume recording incomplete track due to pause:"
 )

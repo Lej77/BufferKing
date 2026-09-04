@@ -3,13 +3,15 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
+	osgn "os/signal"
+	"strconv"
+	"strings"
+
 	"github.com/raphaelreyna/BufferKing/internal/app"
 	"github.com/raphaelreyna/BufferKing/internal/parec"
 	"github.com/raphaelreyna/BufferKing/internal/signal"
 	flag "github.com/spf13/pflag"
-	"os"
-	osgn "os/signal"
-	"strconv"
 )
 
 var Version = ""
@@ -183,10 +185,14 @@ func userConf(formats, sources, version *bool) (*app.Conf, *signal.Parser) {
 	flag.BoolVarP(&c.SaveIncompletesPaused, "keep-paused", "P", false, `Keep incomplete recording due to pausing and mark the track as completed.`)
 	flag.BoolVarP(&c.RemovePartials, "remove-partials", "r", false, `Remove partial recording parts.`)
 	flag.BoolVarP(&c.Color, "color", "c", false, `Use color coded output.`)
+	flag.BoolVar(&c.AllowNoUrl, "allow-no-url", false, `If --allowed-domains is used then this flag can be enabled to also record tracks that don't have any URL, i.e. to record local tracks.`)
 
 	flag.BoolVar(formats, "list-formats", false, `List supported audio formats.`)
 	flag.BoolVar(sources, "list-sources", false, `List available audio sources to record.`)
 	flag.BoolVarP(version, "version", "v", false, `Print current version.`)
+
+	var rawDomains string
+	flag.StringVarP(&rawDomains, "allowed-domains", "d", "", "Comma-separated list of allowed domains (e.g., spotify.com,soundcloud.com,youtube.com)")
 
 	pD := signal.DefaultParser()
 	p := *signal.DefaultParser()
@@ -207,6 +213,17 @@ func userConf(formats, sources, version *bool) (*app.Conf, *signal.Parser) {
 	flag.StringVar(&p.PauseToken, "pause-token", pD.PauseToken, `DBus pause token`)
 
 	flag.Parse()
+
+	// Parse rawDomains string into c.AllowedDomains
+	if rawDomains != "" {
+		domains := strings.Split(rawDomains, ",")
+		for _, domain := range domains {
+			trimmed := strings.TrimSpace(domain)
+			if trimmed != "" {
+				c.AllowedDomains = append(c.AllowedDomains, trimmed)
+			}
+		}
+	}
 
 	return &c, &p
 }
