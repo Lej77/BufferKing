@@ -77,6 +77,7 @@ func main() {
 			return
 		}
 	}
+	fmt.Printf("Recording audio from device: %s\n", c.Device)
 
 	// Create and configure app
 	a := &app.App{
