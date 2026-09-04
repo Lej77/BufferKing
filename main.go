@@ -194,7 +194,7 @@ func userConf(formats, sources, version *bool) (*app.Conf, *signal.Parser) {
 	flag.StringVar(&p.ArtistKey, "artist-key", "xesam:artist", `DBus artist key`)
 	flag.StringVar(&p.AlbumKey, "album-key", "xesam:album", `DBus album key`)
 	flag.StringVar(&p.TrackNumber, "track-no-key", "xesam:trackNumber", `DBus track number key`)
-	flag.StringVar(&p.LengthKey, "length-key", "mrpis:length", `DBus track length key`)
+	flag.StringVar(&p.LengthKey, "length-key", "mpris:length", `DBus track length key`)
 	flag.StringVar(&p.StatusKey, "status-key", "PlaybackStatus", `DBus status key`)
 	flag.StringVar(&p.PlayToken, "play-token", "Playing", `DBus play token`)
 	flag.StringVar(&p.PauseToken, "pause-token", "Paused", `DBus pause token`)
