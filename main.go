@@ -178,7 +178,7 @@ func printSources() error {
 func userConf(formats, sources, version *bool) (*app.Conf, *signal.Parser) {
 	c := app.Conf{}
 	flag.StringVarP(&c.ObjectPath, "object-path", "o", "/org/mpris/MediaPlayer2", `DBus object path to listen to.`)
-	flag.StringVarP(&c.Format, "format", "f", "wav", `Audio format to use when recording.`)
+	flag.StringVarP(&c.Format, "format", "f", "flac", `Audio format to use when recording.`)
 	flag.BoolVarP(&c.SaveIncompletesSkipped, "keep-skipped", "S", false, `Keep incomplete recording due to skipping and mark the track as completed.`)
 	flag.BoolVarP(&c.SaveIncompletesPaused, "keep-paused", "P", false, `Keep incomplete recording due to pausing and mark the track as completed.`)
 	flag.BoolVarP(&c.RemovePartials, "remove-partials", "r", false, `Remove partial recording parts.`)

@@ -64,9 +64,14 @@ func (a *App) finishWJ(wj *parec.WriteJob, saveIncomplete bool, failMsg string) 
 	l := a.Library
 	if wj != nil {
 		if completed, _ := wj.Completed(); completed {
+			err := wj.EmbedMetadata()
+			if err != nil {
+				return err
+			}
+
 			l.Lock()
 			l.MarkStored(wj.Track)
-			err := l.FileMarkStored(wj.Track, wj.FileName())
+			err = l.FileMarkStored(wj.Track, wj.FileName())
 			if err != nil {
 				l.Unlock()
 				return err
@@ -75,9 +80,14 @@ func (a *App) finishWJ(wj *parec.WriteJob, saveIncomplete bool, failMsg string) 
 			a.Print(colorGreen, CompletedNewRecording, nil)
 		} else {
 			if saveIncomplete {
+				err := wj.EmbedMetadata()
+				if err != nil {
+					return err
+				}
+
 				l.Lock()
 				l.MarkStored(wj.Track)
-				err := l.FileMarkStored(wj.Track, wj.FileName())
+				err = l.FileMarkStored(wj.Track, wj.FileName())
 				if err != nil {
 					l.Unlock()
 					return err

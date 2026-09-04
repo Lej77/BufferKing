@@ -3,11 +3,14 @@ package parec
 import (
 	"context"
 	"fmt"
-	"github.com/raphaelreyna/BufferKing/internal/library"
+	"io"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"time"
+
+	"github.com/raphaelreyna/BufferKing/internal/library"
 )
 
 type WriteJob struct {
@@ -110,4 +113,133 @@ func (wj *WriteJob) FileName() string {
 	t := wj.Track
 	t.Format = wj.parec.Format
 	return fmt.Sprintf(".(%d)%d - %s.%s", wj.parec.partsCount, t.TrackNumber, t.Title, t.Format)
+}
+
+func downloadArt(artURL, dstPath string) error {
+	if artURL == "" {
+		return fmt.Errorf("artURL is empty")
+	}
+
+	client := http.Client{Timeout: 5 * time.Second}
+	resp, err := client.Get(artURL)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("failed to fetch cover art: HTTP %d", resp.StatusCode)
+	}
+
+	out, err := os.Create(dstPath)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, resp.Body)
+	return err
+}
+
+func copyFile(src, dst string) error {
+	in, err := os.Open(src)
+	if err != nil {
+		return err
+	}
+	defer in.Close()
+
+	out, err := os.Create(dst)
+	if err != nil {
+		return err
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, in)
+	return err
+}
+
+// Embed metadata into written file. Should run just after Stop.
+func (wj *WriteJob) EmbedMetadata() error {
+	if wj == nil || wj.Track == nil {
+		return fmt.Errorf("writejob or track is nil")
+	}
+
+	p := wj.parec
+	t := wj.Track
+	t.Format = p.Format
+
+	// Paths
+	dir := filepath.Dir(filepath.Join(p.Root, t.RelPath()))
+	originalPath := filepath.Join(dir, wj.FileName())
+	tempTaggedPath := filepath.Join(dir, ".tagged_"+wj.FileName())
+
+	// Cover art paths
+	tempArtPath := filepath.Join(dir, fmt.Sprintf(".art_%d.jpg", time.Now().UnixNano()))
+	albumCoverPath := filepath.Join(dir, "cover.jpg")
+
+	hasCover := false
+	if t.ArtURL != "" {
+		if err := downloadArt(t.ArtURL, tempArtPath); err == nil {
+			hasCover = true
+			defer os.Remove(tempArtPath) // Clean up image download when done
+
+			// Save/copy to cover.jpg in the album folder if it doesn't already exist
+			if _, err := os.Stat(albumCoverPath); os.IsNotExist(err) {
+				_ = copyFile(tempArtPath, albumCoverPath)
+			}
+		}
+
+	}
+
+	// Base arguments
+	args := []string{"-y", "-i", originalPath}
+
+	// Add cover art input if available
+	if hasCover {
+		args = append(args, "-i", tempArtPath)
+	}
+
+	// Stream mapping
+	if hasCover {
+		args = append(args,
+			"-map", "0:a", // Use audio from first input (recorded file)
+			"-map", "1:v", // Use image from second input (album art)
+			"-disposition:v:0", "attached_pic",
+		)
+	} else {
+		args = append(args, "-map", "0:a")
+	}
+
+	// Metadata flags
+	args = append(args,
+		"-metadata", fmt.Sprintf("title=%s", t.Title),
+		"-metadata", fmt.Sprintf("artist=%s", t.Artist),
+		"-metadata", fmt.Sprintf("album=%s", t.Album),
+		"-metadata", fmt.Sprintf("album_artist=%s", t.AlbumArtist),
+		"-metadata", fmt.Sprintf("track=%d", t.TrackNumber),
+		"-metadata", fmt.Sprintf("disc=%d", t.DiscNumber),
+		"-metadata", fmt.Sprintf("purl=%s", t.URL),         // Public URL (ID3v2 WCOP/PURL)
+		"-metadata", fmt.Sprintf("comment=%s", t.TrackID),   // Track ID
+	)
+
+	// Add rating metadata if present (Spotify autoRating 0.0 - 1.0 mapped to 0-100)
+	if t.AutoRating > 0 && t.AutoRating <= 1 {
+		args = append(args, "-metadata", fmt.Sprintf("rating=%d", int(t.AutoRating*100)))
+	}
+
+	// Direct stream copy (no re-encoding)
+	args = append(args, "-c", "copy", tempTaggedPath)
+
+	cmd := exec.Command("ffmpeg", args...)
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		return fmt.Errorf("ffmpeg tagging failed: %w (output: %s)", err, string(output))
+	}
+
+	// Replace original file with tagged version
+	if err := os.Rename(tempTaggedPath, originalPath); err != nil {
+		return fmt.Errorf("failed to finalize tagged file: %w", err)
+	}
+
+	return nil
 }
