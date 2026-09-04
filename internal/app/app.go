@@ -14,12 +14,13 @@ import (
 )
 
 type Conf struct {
-	Root                   string
-	SaveIncompletesPaused  bool
-	SaveIncompletesSkipped bool
-	RemovePartials         bool
-	AllowedDomains         []string
-	AllowNoUrl             bool
+	Root                  string
+	SaveIncompletePaused  bool
+	SaveIncompleteSkipped bool
+	SaveIncompleteQuit    bool
+	RemovePartials        bool
+	AllowedDomains        []string
+	AllowNoUrl            bool
 	// ObjectPath points to the dbus object we're listening to.
 	// default: /org/mpris/MediaPlayer2
 	ObjectPath string
@@ -159,6 +160,7 @@ const (
 	CompletedNewRecording = "completed recording new track"
 	UnableToCompleteSkip  = "unable to complete recording track due to early track advancement"
 	UnableToCompletePause = "unable to complete recording track due to pause"
+	UnableToCompleteQuit  = "unable to complete recording track due to exiting BufferKing"
 
 	TrackFoundIgnoring    = "track found in library, ignoring:"
 	UrlDisallowedIgnoring = "track from disallowed URL, ignoring:"

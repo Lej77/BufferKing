@@ -48,7 +48,7 @@ func (a *App) Run(ctx context.Context) error {
 			}
 
 			go func() {
-				err := a.finishWJ(finishedWJ, c.SaveIncompletesSkipped, UnableToCompleteSkip)
+				err := a.finishWJ(finishedWJ, c.SaveIncompleteSkipped, UnableToCompleteSkip)
 				if err != nil {
 					fmt.Println(err)
 				}
@@ -63,7 +63,7 @@ func (a *App) Run(ctx context.Context) error {
 
 			go func() {
 				if wj != nil {
-					err := a.finishWJ(wj, c.SaveIncompletesPaused, UnableToCompletePause)
+					err := a.finishWJ(wj, c.SaveIncompletePaused, UnableToCompletePause)
 					if err != nil {
 						fmt.Println(err)
 					}
@@ -85,6 +85,20 @@ func (a *App) Run(ctx context.Context) error {
 			lastTS.Status = ts.Status
 		}
 	}
+
+	wj, err := p.StopWriteJob()
+	if err != nil {
+		return err
+	}
+
+	go func() {
+		if wj != nil {
+			err := a.finishWJ(wj, c.SaveIncompleteQuit, UnableToCompleteQuit)
+			if err != nil {
+				fmt.Println(err)
+			}
+		}
+	}()
 
 	return err
 }
