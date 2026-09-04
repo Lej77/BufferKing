@@ -73,12 +73,15 @@ func (l *Listener) Start(ctx context.Context) error {
 
 				ts, err := l.Parse(signal)
 				if err != nil {
-					fmt.Println(err)
-					err = l.Stop()
-					if err != nil {
-						fmt.Println(err)
-					}
-					break
+					// Log the ignored signal and keep listening
+					fmt.Println("Ignored signal:", err)
+					continue
+					// fmt.Println(err)
+					// err = l.Stop()
+					// if err != nil {
+					// 	fmt.Println(err)
+					// }
+					// break
 				}
 
 				l.TrackSignals <- ts
