@@ -4,9 +4,10 @@ import (
 	"context"
 	"fmt"
 	"os"
-	osgn "os/signal"
+	osSignal "os/signal"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/raphaelreyna/BufferKing/internal/app"
 	"github.com/raphaelreyna/BufferKing/internal/parec"
@@ -93,22 +94,17 @@ func main() {
 	a.Listener.Parser = *p
 
 	// Create context, and listen for kill signal
-	ctx, cancelFunc := context.WithCancel(context.Background())
-	sigChan := make(chan os.Signal)
-	osgn.Notify(sigChan, os.Kill)
-	go func() {
-		<-sigChan
-		cancelFunc()
-	}()
+	ctx, stop := osSignal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
 	// Run bufferking main logic
-	if err := a.StartListening(ctx); err != nil {
+	if err := a.StartListening(ctx); err != nil && err != context.Canceled {
 		fmt.Println(err)
 		return
 	}
 
-	if err := a.Run(ctx); err != nil {
-		fmt.Println(err)
+	if err := a.Run(ctx); err != nil && err != context.Canceled {
+		fmt.Println("Error:", err)
 		return
 	}
 

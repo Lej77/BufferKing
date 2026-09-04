@@ -61,24 +61,25 @@ func (wj *WriteJob) Start(ctx context.Context) error {
 
 func (wj *WriteJob) Stop() error {
 	cmd := wj.cmd
-	if cmd == nil {
+	if cmd == nil || cmd.Process == nil {
 		return nil
 	}
 
 	err := cmd.Process.Signal(os.Interrupt)
 	if err != nil {
+		_ = cmd.Process.Kill()
+		wj.stopped = time.Now()
 		return err
 	}
 
 	//Wait for parec to stop
 	err = cmd.Wait()
-	if err != nil {
-		return err
+	if err != nil && (strings.Contains(err.Error(), "signal: killed") || strings.Contains(err.Error(), "signal: interrupt")) {
+		// ignore error that indicates it was killed early
+		err = nil
 	}
-
 	wj.stopped = time.Now()
-
-	return nil
+	return err
 }
 
 func (wj *WriteJob) Running() bool {
