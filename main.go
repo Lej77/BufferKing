@@ -182,7 +182,8 @@ func userConf(formats, sources, version *bool) (*app.Conf, *signal.Parser) {
 	flag.BoolVarP(&c.SaveIncompleteQuit, "keep-at-quit", "Q", false, `Keep incomplete recording due to exiting BufferKing and mark the track as completed.`)
 	flag.BoolVarP(&c.RemovePartials, "remove-partials", "r", false, `Remove partial recording parts.`)
 	flag.BoolVarP(&c.Color, "color", "c", false, `Use color coded output.`)
-	flag.BoolVar(&c.AllowNoUrl, "allow-no-url", false, `If --allowed-domains is used then this flag can be enabled to also record tracks that don't have any URL, i.e. to record local tracks.`)
+	flag.BoolVar(&c.AllowNoUrl, "allow-no-url", false, `If --allowed-domains is used then this flag can be enabled to also record tracks that don't have any URL, i.e. to record unknown tracks.`)
+	flag.BoolVar(&c.AllowFileUrl, "allow-file-url", false, `Record audio for tracks that announce their URL using a "file://" schema, i.e. record local tracks.`)
 
 	flag.BoolVar(formats, "list-formats", false, `List supported audio formats.`)
 	flag.BoolVar(sources, "list-sources", false, `List available audio sources to record.`)

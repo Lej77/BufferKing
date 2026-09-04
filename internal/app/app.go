@@ -21,6 +21,7 @@ type Conf struct {
 	RemovePartials        bool
 	AllowedDomains        []string
 	AllowNoUrl            bool
+	AllowFileUrl          bool
 	// ObjectPath points to the dbus object we're listening to.
 	// default: /org/mpris/MediaPlayer2
 	ObjectPath string
@@ -34,21 +35,33 @@ type Conf struct {
 // IsAllowedDomain checks if the URL matches any allowed domains.
 // Returns true if no domains are specified (allow all by default).
 func (c *Conf) IsAllowedDomain(rawURL string) bool {
-	if len(c.AllowedDomains) == 0 {
-		return true
-	}
 	if rawURL == "" {
 		return c.AllowNoUrl
 	}
 
 	parsed, err := url.Parse(rawURL)
-	if err != nil || parsed.Host == "" {
+	if err != nil {
 		return c.AllowNoUrl
 	}
 
-	host := strings.ToLower(parsed.Host)
+	if parsed.Scheme == "file" {
+		return c.AllowFileUrl
+	}
+
+	// Strip port numbers from host (e.g., "example.com:8080" -> "example.com")
+	host := strings.ToLower(parsed.Hostname())
+	if host == "" {
+		return c.AllowNoUrl
+	}
+
+	if len(c.AllowedDomains) == 0 {
+		return true
+	}
+
 	for _, domain := range c.AllowedDomains {
-		if strings.HasSuffix(host, strings.ToLower(domain)) {
+		domain = strings.ToLower(domain)
+		// Exact match or proper subdomain match (e.g., api.example.com)
+		if host == domain || strings.HasSuffix(host, "."+domain) {
 			return true
 		}
 	}
