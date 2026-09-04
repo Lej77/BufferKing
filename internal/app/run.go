@@ -98,6 +98,7 @@ func (a *App) Run(ctx context.Context) error {
 				}()
 
 			case signal.Resumed:
+				// TODO: track player that resumed playing
 				if lastTS != nil {
 					l.Lock()
 					stored := l.Stored(&lastTS.Track)
