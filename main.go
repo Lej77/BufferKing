@@ -70,10 +70,12 @@ func main() {
 	c.Root = os.Args[1]
 
 	// Grab device that will be our audio source to record from
-	c.Device, err = source(os.Args)
-	if err != nil {
-		fmt.Println(err)
-		return
+	if c.Device == "" {
+		c.Device, err = source()
+		if err != nil {
+			fmt.Println(err)
+			return
+		}
 	}
 
 	// Create and configure app
@@ -110,34 +112,30 @@ func main() {
 	retCode = 0
 }
 
-func source(argv []string) (string, error) {
+func source() (string, error) {
 	var device string
-	if len(argv) == 2 {
-		sources, err := parec.Sources()
-		if err != nil {
-			return "", err
-		}
+	sources, err := parec.Sources()
+	if err != nil {
+		return "", err
+	}
 
-		for index, source := range sources {
-			fmt.Printf("%d) %s\n", index, source)
-		}
+	for index, source := range sources {
+		fmt.Printf("%d) %s\n", index, source)
+	}
 
-		fmt.Print("Record from which source: ")
-		var devIndexString string
-		fmt.Scanln(&devIndexString)
+	fmt.Print("Record from which source: ")
+	var devIndexString string
+	fmt.Scanln(&devIndexString)
 
-		devIndex, err := strconv.Atoi(devIndexString)
-		if err != nil {
-			return "", err
-		}
+	devIndex, err := strconv.Atoi(devIndexString)
+	if err != nil {
+		return "", err
+	}
 
-		if devIndex < len(sources) && 0 <= devIndex {
-			device = sources[devIndex]
-		} else {
-			return "", fmt.Errorf("invalid source choice")
-		}
+	if devIndex < len(sources) && 0 <= devIndex {
+		device = sources[devIndex]
 	} else {
-		device = argv[2]
+		return "", fmt.Errorf("invalid source choice")
 	}
 	return device, nil
 }
@@ -177,6 +175,7 @@ func printSources() error {
 // userConf parses users flag input into a Conf struct
 func userConf(formats, sources, version *bool) (*app.Conf, *signal.Parser) {
 	c := app.Conf{}
+	flag.StringVarP(&c.Device, "device", "D", "", "Device to record audio from.")
 	flag.StringVarP(&c.ObjectPath, "object-path", "o", "/org/mpris/MediaPlayer2", `DBus object path to listen to.`)
 	flag.StringVarP(&c.Format, "format", "f", "flac", `Audio format to use when recording.`)
 	flag.BoolVarP(&c.SaveIncompletesSkipped, "keep-skipped", "S", false, `Keep incomplete recording due to skipping and mark the track as completed.`)
