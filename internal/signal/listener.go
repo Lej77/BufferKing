@@ -7,9 +7,10 @@ import (
 	"time"
 
 	dbus "github.com/godbus/dbus/v5"
+	"github.com/raphaelreyna/BufferKing/internal/library"
 )
 
-const DefaultDebounce = 500 * time.Millisecond
+const DefaultDebounce = 50 * time.Millisecond
 
 type Listener struct {
 	TrackSignals chan<- *TrackSignal
@@ -83,23 +84,28 @@ func (l *Listener) Start(ctx context.Context) error {
 			_ = l.Stop()
 		}()
 
-		dbst := time.Now() // debounce start time
+		var (
+			timer         *time.Timer
+			timerChan     <-chan time.Time
+			latestTrack   library.Track
+			latestStat    Status
+			hasPending    bool
+			isSuppressing bool
+		)
+
 		for {
 			select {
 			case <-ctx.Done():
-				return // Use return to exit the goroutine cleanly
+				return
 
 			case sig, ok := <-l.sigChan:
 				if !ok {
-					// sigChan was closed by godbus on conn.Close()
 					return
 				}
 
-				now := time.Now()
-				if dt := now.Sub(dbst); dt < l.DebounceDuration {
+				if sig.Name != "org.freedesktop.DBus.Properties.PropertiesChanged" {
 					continue
 				}
-				dbst = now
 
 				ts, err := l.Parse(sig)
 				if err != nil {
@@ -112,12 +118,56 @@ func (l *Listener) Start(ctx context.Context) error {
 					// 	fmt.Println(err)
 					// }
 					// break
+				} else if ts == nil {
+					continue // unrelated change (for example a field such as "CanSeek" or "CanGoNext")
 				}
 
-				select {
-				case l.TrackSignals <- ts:
-				case <-ctx.Done():
-					return
+				// Merge updates into state buffer
+				if ts.Track.Title != "" {
+					latestTrack = ts.Track
+				}
+				latestStat = ts.Status
+
+				out := &TrackSignal{
+					Track:  latestTrack,
+					Status: latestStat,
+				}
+
+				if !isSuppressing {
+					// Emit instantly on leading edge
+					select {
+					case l.TrackSignals <- out:
+					case <-ctx.Done():
+						return
+					}
+
+					// Start suppression window to absorb burst signals
+					isSuppressing = true
+					timer = time.NewTimer(l.DebounceDuration)
+					timerChan = timer.C
+				} else {
+					// Buffer intermediate updates while suppressing
+					hasPending = true
+				}
+
+			case <-timerChan:
+				timer = nil
+				timerChan = nil
+				isSuppressing = false
+
+				// Flush final merged state if new data arrived during suppression
+				if hasPending {
+					hasPending = false
+					out := &TrackSignal{
+						Track:  latestTrack,
+						Status: latestStat,
+					}
+
+					select {
+					case l.TrackSignals <- out:
+					case <-ctx.Done():
+						return
+					}
 				}
 			}
 		}

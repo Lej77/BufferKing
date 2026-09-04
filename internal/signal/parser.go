@@ -52,7 +52,10 @@ func DefaultParser() *Parser {
 
 func (p *Parser) Parse(sign *dbus.Signal) (*TrackSignal, error) {
 	if len(sign.Body) < 2 {
-		return nil, fmt.Errorf("signal body too short")
+		if len(sign.Body) == 1 {
+			return nil, fmt.Errorf("signal body too short, name=%s, first item in body=%s", sign.Name, sign.Body[0])
+		}
+		return nil, fmt.Errorf("signal body too short, name=%s", sign.Name)
 	}
 
 	resp := map[string]dbus.Variant{}
@@ -112,7 +115,7 @@ func (p *Parser) Parse(sign *dbus.Signal) (*TrackSignal, error) {
 
 	// If neither status nor metadata changed in this signal, ignore it
 	if !hasMetadata && !hasStatus {
-		return nil, fmt.Errorf("signal contained neither status nor metadata updates")
+		return nil, nil
 	}
 
 	return &TrackSignal{
