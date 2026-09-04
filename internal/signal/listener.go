@@ -7,16 +7,16 @@ import (
 	"time"
 
 	dbus "github.com/godbus/dbus/v5"
-	"github.com/raphaelreyna/BufferKing/internal/library"
 )
 
-const DefaultDebounce = 50 * time.Millisecond
+const DefaultDebounce = 150 * time.Millisecond
 
 type Listener struct {
 	TrackSignals chan<- *TrackSignal
 	ObjectPath   string
 	Parser
 	DebounceDuration time.Duration
+	EmitInstantly    bool
 
 	conn     *dbus.Conn
 	sigChan  chan *dbus.Signal
@@ -87,8 +87,7 @@ func (l *Listener) Start(ctx context.Context) error {
 		var (
 			timer         *time.Timer
 			timerChan     <-chan time.Time
-			latestTrack   library.Track
-			latestStat    Status
+			latest        TrackSignal
 			hasPending    bool
 			isSuppressing bool
 		)
@@ -103,14 +102,11 @@ func (l *Listener) Start(ctx context.Context) error {
 					return
 				}
 
-				if sig.Name != "org.freedesktop.DBus.Properties.PropertiesChanged" {
-					continue
-				}
-
 				ts, err := l.Parse(sig)
+				// fmt.Println("Signal ", sig, "\n\tparsed as: ", ts, "")
 				if err != nil {
 					// Log the ignored signal and keep listening
-					fmt.Println("Ignored signal:", err)
+					fmt.Println("failed to parse signal, ignoring it: ", err)
 					continue
 					// fmt.Println(err)
 					// err = l.Stop()
@@ -119,26 +115,38 @@ func (l *Listener) Start(ctx context.Context) error {
 					// }
 					// break
 				} else if ts == nil {
-					continue // unrelated change (for example a field such as "CanSeek" or "CanGoNext")
+					continue
 				}
 
-				// Merge updates into state buffer
+				// Merge updates
 				if ts.Track.Title != "" {
-					latestTrack = ts.Track
+					latest.Track = ts.Track
 				}
-				latestStat = ts.Status
-
-				out := &TrackSignal{
-					Track:  latestTrack,
-					Status: latestStat,
+				if ts.Status != None {
+					latest.Status = ts.Status
+				}
+				if !ts.Started.IsZero() {
+					latest.Started = ts.Started
+				}
+				if ts.HasSeek || !ts.Started.IsZero() {
+					latest.HasSeek = ts.HasSeek
 				}
 
 				if !isSuppressing {
-					// Emit instantly on leading edge
-					select {
-					case l.TrackSignals <- out:
-					case <-ctx.Done():
-						return
+					if l.EmitInstantly {
+						// Emit instantly on leading edge
+
+						out := new(TrackSignal)
+						*out = latest
+						latest = TrackSignal{}
+
+						select {
+						case l.TrackSignals <- out:
+						case <-ctx.Done():
+							return
+						}
+					} else {
+						hasPending = true
 					}
 
 					// Start suppression window to absorb burst signals
@@ -158,10 +166,9 @@ func (l *Listener) Start(ctx context.Context) error {
 				// Flush final merged state if new data arrived during suppression
 				if hasPending {
 					hasPending = false
-					out := &TrackSignal{
-						Track:  latestTrack,
-						Status: latestStat,
-					}
+					out := new(TrackSignal)
+					*out = latest
+					latest = TrackSignal{}
 
 					select {
 					case l.TrackSignals <- out:

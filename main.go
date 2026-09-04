@@ -179,6 +179,7 @@ func userConf(formats, sources, version *bool) (*app.Conf, *signal.Parser) {
 	flag.StringVarP(&c.Format, "format", "f", "flac", `Audio format to use when recording.`)
 	flag.BoolVarP(&c.SaveIncompleteSkipped, "keep-skipped", "S", false, `Keep incomplete recording due to skipping and mark the track as completed.`)
 	flag.BoolVarP(&c.SaveIncompletePaused, "keep-paused", "P", false, `Keep incomplete recording due to pausing and mark the track as completed.`)
+	flag.BoolVarP(&c.SaveIncompleteSeek, "keep-after-seek", "E", false, `Keep incomplete recording due to seeking and mark the track as completed.`)
 	flag.BoolVarP(&c.SaveIncompleteQuit, "keep-at-quit", "Q", false, `Keep incomplete recording due to exiting BufferKing and mark the track as completed.`)
 	flag.BoolVarP(&c.KeepPartials, "keep-partials", "r", false, `Keep partial recording parts.`)
 	flag.BoolVarP(&c.Color, "color", "c", false, `Use color coded output.`)

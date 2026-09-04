@@ -2,6 +2,8 @@ package signal
 
 import (
 	"fmt"
+	"time"
+
 	"github.com/raphaelreyna/BufferKing/internal/library"
 )
 
@@ -16,6 +18,7 @@ const (
 	Paused   Status = Play - Pause // 2
 	Resumed  Status = Pause - Play // -2
 	NewTrack Status = 3
+	Seek     Status = 4
 )
 
 func (s Status) String() string {
@@ -32,6 +35,8 @@ func (s Status) String() string {
 		return "Resumed Playing"
 	case NewTrack:
 		return "New Track"
+	case Seek:
+		return "Seek"
 	}
 
 	return "INVALID_STATUS"
@@ -40,6 +45,11 @@ func (s Status) String() string {
 type TrackSignal struct {
 	library.Track
 	Status
+
+	// The time when the song Started playing, can change if seek to 0 or using previous song command.
+	Started time.Time
+	// Did seek to non-zero time in the track.
+	HasSeek bool
 }
 
 // Compare compares the old tracksignal to the new tracksignal
@@ -50,15 +60,22 @@ func (t *TrackSignal) Compare(tt *TrackSignal) Status {
 	hasNewMetadata := tt.Track.Title != "" || tt.Track.Artist != ""
 	if t == nil {
 		// First signal received
+		if tt.HasSeek {
+			return Seek
+		}
 		if tt.Status == Play && hasNewMetadata {
 			return NewTrack
 		}
 		return Paused
 	} else if tt == nil {
-		// Can't assume audio is still playing
+		// Can't assume audio is still playing, should never happen normally
 		return Paused
 	}
+	// both t and tt are non null:
 
+	if t.HasSeek != tt.HasSeek {
+		return Seek
+	}
 	if hasNewMetadata {
 		sameTrack := t.Title == tt.Title
 		sameTrack = sameTrack && t.Artist == tt.Artist
@@ -69,10 +86,13 @@ func (t *TrackSignal) Compare(tt *TrackSignal) Status {
 			return NewTrack
 		}
 	}
+	if !tt.Started.IsZero() && tt.Started != t.Started {
+		return NewTrack
+	}
 
 	return t.Status - tt.Status
 }
 
 func (t *TrackSignal) String() string {
-	return fmt.Sprintf("%s - %s", t.Status, &t.Track)
+	return fmt.Sprintf("%s - started at %s (seek: %t) - %s", t.Status, t.Started, t.HasSeek, t.Track.SimpleString())
 }

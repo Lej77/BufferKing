@@ -16,6 +16,7 @@ import (
 type Conf struct {
 	Root                  string
 	SaveIncompletePaused  bool
+	SaveIncompleteSeek    bool
 	SaveIncompleteSkipped bool
 	SaveIncompleteQuit    bool
 	KeepPartials          bool
@@ -173,6 +174,7 @@ const (
 	CompletedNewRecording = "completed recording new track"
 	UnableToCompleteSkip  = "unable to complete recording track due to early track advancement"
 	UnableToCompletePause = "unable to complete recording track due to pause"
+	UnableToCompleteSeek  = "unable to complete recording track due to seek"
 	UnableToCompleteQuit  = "unable to complete recording track due to exiting BufferKing"
 
 	TrackFoundIgnoring    = "track found in library, ignoring:"

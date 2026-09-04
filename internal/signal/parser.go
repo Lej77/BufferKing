@@ -51,6 +51,22 @@ func DefaultParser() *Parser {
 }
 
 func (p *Parser) Parse(sign *dbus.Signal) (*TrackSignal, error) {
+	if sign.Name == "org.mpris.MediaPlayer2.Player.previous" {
+		return &TrackSignal{HasSeek: false, Started: time.Now()}, nil
+	}
+	if sign.Name == "org.mpris.MediaPlayer2.Player.Seeked" {
+		if len(sign.Body) > 0 {
+			seek := castToInt64(sign.Body[0])
+			if seek == 0 {
+				return &TrackSignal{HasSeek: false, Started: time.Now()}, nil
+			}
+		}
+		return &TrackSignal{HasSeek: true}, nil
+	}
+	if sign.Name != "org.freedesktop.DBus.Properties.PropertiesChanged" {
+		// ignore other signals
+		return nil, nil
+	}
 	if len(sign.Body) < 2 {
 		if len(sign.Body) == 1 {
 			return nil, fmt.Errorf("signal body too short, name=%s, first item in body=%s", sign.Name, sign.Body[0])
@@ -113,8 +129,9 @@ func (p *Parser) Parse(sign *dbus.Signal) (*TrackSignal, error) {
 		}
 	}
 
-	// If neither status nor metadata changed in this signal, ignore it
+	// If PropertiesChanged but neither status nor metadata changed in this signal, ignore it
 	if !hasMetadata && !hasStatus {
+		// unrelated change (for example a field such as "CanSeek" or "CanGoNext")
 		return nil, nil
 	}
 
@@ -189,8 +206,15 @@ func parseFloat64(m map[string]dbus.Variant, key string) float64 {
 }
 
 func parseInt64(m map[string]dbus.Variant, key string) int64 {
-	if v, ok := m[key]; ok && v.Value() != nil {
-		switch num := v.Value().(type) {
+	if v, ok := m[key]; ok {
+		return castToInt64(v.Value())
+	}
+	return 0
+}
+
+func castToInt64(value any) int64 {
+	if value != nil {
+		switch num := value.(type) {
 		case uint64:
 			return int64(num)
 		case int64:

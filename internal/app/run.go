@@ -3,7 +3,9 @@ package app
 import (
 	"context"
 	"fmt"
+	"time"
 
+	"github.com/raphaelreyna/BufferKing/internal/library"
 	"github.com/raphaelreyna/BufferKing/internal/parec"
 	"github.com/raphaelreyna/BufferKing/internal/signal"
 )
@@ -54,6 +56,13 @@ func (a *App) Run(ctx context.Context) error {
 			diff := lastTS.Compare(ts)
 			switch diff {
 			case signal.NewTrack:
+				if ts.Started.IsZero() {
+					ts.Started = time.Now()
+				} else if ts.Title == "" && lastTS != nil {
+					// Likely did seek to beginning of track, re-use info
+					ts.Track = lastTS.Track
+				}
+
 				l.Lock()
 				stored := l.Stored(&ts.Track)
 				l.Unlock()
@@ -98,15 +107,36 @@ func (a *App) Run(ctx context.Context) error {
 				}()
 
 			case signal.Resumed:
-				// TODO: track player that resumed playing
-				if lastTS != nil {
+				var track *library.Track = nil
+				if ts != nil && ts.Track.Title != "" {
+					track = &ts.Track
+				} else if lastTS != nil && lastTS.Track.Title != "" {
+					// TODO: track player that resumed playing and only use this if same player
+					track = &lastTS.Track
+				}
+				if track != nil {
 					l.Lock()
-					stored := l.Stored(&lastTS.Track)
+					stored := l.Stored(track)
 					l.Unlock()
-					if !stored {
-						a.Print(colorYellow, TrackUnableToResume, &lastTS.Track)
+					if !stored && a.Conf.IsAllowedDomain(track.URL) {
+						a.Print(colorYellow, TrackUnableToResume, track)
 					}
 				}
+
+			case signal.Seek:
+				wj, err := p.StopWriteJob()
+				if err != nil {
+					return err
+				}
+
+				go func() {
+					if wj != nil {
+						err := a.finishWJ(wj, c.SaveIncompleteSeek, UnableToCompleteSeek)
+						if err != nil {
+							fmt.Println(err)
+						}
+					}
+				}()
 
 			case signal.None:
 			}
@@ -114,6 +144,15 @@ func (a *App) Run(ctx context.Context) error {
 			if ts.Track.Title == "" && lastTS != nil {
 				lastTS.Status = ts.Status
 			} else {
+				if diff != signal.NewTrack && lastTS != nil {
+					// preserve some info
+					if ts.Started.IsZero() {
+						ts.Started = lastTS.Started
+					}
+					if lastTS.HasSeek {
+						ts.HasSeek = true
+					}
+				}
 				lastTS = ts
 			}
 		}
