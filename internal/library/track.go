@@ -37,14 +37,14 @@ func (t *Track) SimpleString() string {
 func (t *Track) String() string {
 	// ANSI Color & Formatting Constants
 	const (
-		reset     = "\033[0m"
-		bold      = "\033[1m"
-		dim       = "\033[2m"
-		cyan      = "\033[36m"
-		green     = "\033[32m"
-		magenta   = "\033[35m"
-		yellow    = "\033[33m"
-		blue      = "\033[34m"
+		reset   = "\033[0m"
+		bold    = "\033[1m"
+		dim     = "\033[2m"
+		cyan    = "\033[36m"
+		green   = "\033[32m"
+		magenta = "\033[35m"
+		yellow  = "\033[33m"
+		blue    = "\033[34m"
 	)
 
 	// Format Track / Disc numbers (e.g., "02" or "Disc 1, #02")
@@ -84,8 +84,12 @@ func (t *Track) String() string {
 
 	// Optional Line: Album Art URL
 	if t.ArtURL != "" {
+		artStr := t.ArtURL
+		if len(artStr) > 80 && strings.HasPrefix(artStr, "data:") {
+			artStr = artStr[:50] + "... [base64 truncated]"
+		}
 		out += fmt.Sprintf("  %s└─%s %sArt:%s %s%s%s",
-			dim, reset, blue, reset, dim, t.ArtURL, reset)
+			dim, reset, blue, reset, dim, artStr, reset)
 	} else {
 		// Clean trailing connector if ArtURL is missing
 		out = strings.TrimSuffix(out, "\n")
