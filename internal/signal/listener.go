@@ -72,7 +72,7 @@ func (l *Listener) Start(ctx context.Context) error {
 		return err
 	}
 
-	l.sigChan = make(chan *dbus.Signal, cap(l.TrackSignals))
+	l.sigChan = make(chan *dbus.Signal, 100)
 	l.conn.Signal(l.sigChan)
 
 	if l.DebounceDuration == 0 {
