@@ -14,11 +14,12 @@ const (
 	Pause Status = -1
 
 	// Used for comparing Track signals; diff = before - after
-	None     Status = Play - Play  // 0
-	Paused   Status = Play - Pause // 2
-	Resumed  Status = Pause - Play // -2
-	NewTrack Status = 3
-	Seek     Status = 4
+	None           Status = Play - Play  // 0
+	Paused         Status = Play - Pause // 2
+	Resumed        Status = Pause - Play // -2
+	NewTrack       Status = 3
+	Seek           Status = 4
+	SwitchedPlayer Status = 5
 )
 
 func (s Status) String() string {
@@ -37,6 +38,8 @@ func (s Status) String() string {
 		return "New Track"
 	case Seek:
 		return "Seek"
+	case SwitchedPlayer:
+		return "Switched Media Player"
 	}
 
 	return "INVALID_STATUS"
@@ -50,6 +53,8 @@ type TrackSignal struct {
 	Started time.Time
 	// Did seek to non-zero time in the track.
 	HasSeek bool
+	// A name that identifies the media player that emitted this signal.
+	MediaPlayerName string
 }
 
 // Compare compares the old tracksignal to the new tracksignal
@@ -65,6 +70,10 @@ func (t *TrackSignal) Compare(tt *TrackSignal) Status {
 		return Paused
 	}
 	// both t and tt are non null:
+
+	if t.MediaPlayerName != tt.MediaPlayerName {
+		return SwitchedPlayer
+	}
 
 	hasNewMetadata := tt.Track.Title != "" || tt.Track.Artist != ""
 	if hasNewMetadata {
@@ -88,5 +97,5 @@ func (t *TrackSignal) Compare(tt *TrackSignal) Status {
 }
 
 func (t *TrackSignal) String() string {
-	return fmt.Sprintf("%s - started at %s (seek: %t) - %s", t.Status, t.Started, t.HasSeek, t.Track.SimpleString())
+	return fmt.Sprintf("%s - status: %s - started at: %s - seek: %t - %s", t.MediaPlayerName, t.Status, t.Started, t.HasSeek, t.Track.SimpleString())
 }

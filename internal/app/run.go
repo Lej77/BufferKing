@@ -48,10 +48,10 @@ func (a *App) Run(ctx context.Context) error {
 			diff := lastTS.Compare(ts)
 			// fmt.Println("Buffered Signal - Diff is ", diff, " - Info ", ts)
 			switch diff {
-			case signal.NewTrack:
+			case signal.NewTrack, signal.SwitchedPlayer:
 				if ts.Started.IsZero() {
 					ts.Started = time.Now()
-				} else if ts.Title == "" && lastTS != nil {
+				} else if ts.Title == "" && lastTS != nil && lastTS.MediaPlayerName == ts.MediaPlayerName {
 					// Likely did seek to beginning of track, re-use info
 					ts.Track = lastTS.Track
 				}
@@ -62,7 +62,10 @@ func (a *App) Run(ctx context.Context) error {
 
 				var finishedWJ *parec.WriteJob
 				var printFunc MsgPrinter
-				if stored {
+				if ts.Title == "" {
+					finishedWJ, err = p.StopWriteJob()
+					printFunc = a.NewPrinter(colorYellow, TrackWithoutMetadata, nil)
+				} else if stored {
 					finishedWJ, err = p.StopWriteJob()
 					printFunc = a.NewPrinter(colorCyan, TrackFoundIgnoring, &ts.Track)
 				} else if !a.Conf.IsAllowedDomain(ts.Track.URL) {
@@ -77,7 +80,12 @@ func (a *App) Run(ctx context.Context) error {
 				}
 
 				go func() {
-					err := a.finishWJ(finishedWJ, c.SaveIncompleteSkipped, UnableToCompleteSkip)
+					var err error
+					if diff == signal.SwitchedPlayer {
+						err = a.finishWJ(finishedWJ, c.SaveIncompletePlayer, UnableToCompletePlayer)
+					} else {
+						err = a.finishWJ(finishedWJ, c.SaveIncompleteSkipped, UnableToCompleteSkip)
+					}
 					if err != nil {
 						fmt.Println(err)
 					}
@@ -103,8 +111,7 @@ func (a *App) Run(ctx context.Context) error {
 				var track *library.Track = nil
 				if ts != nil && ts.Track.Title != "" {
 					track = &ts.Track
-				} else if lastTS != nil && lastTS.Track.Title != "" {
-					// TODO: track player that resumed playing and only use this if same player
+				} else if lastTS != nil && lastTS.Track.Title != "" && lastTS.MediaPlayerName == ts.MediaPlayerName {
 					track = &lastTS.Track
 				}
 				if track != nil {
@@ -134,7 +141,7 @@ func (a *App) Run(ctx context.Context) error {
 			case signal.None:
 			}
 
-			if diff != signal.NewTrack && lastTS != nil {
+			if diff != signal.NewTrack && lastTS != nil && lastTS.MediaPlayerName == ts.MediaPlayerName {
 				// preserve old info except for new changes
 				if ts.Track.Title != "" {
 					lastTS.Track = ts.Track

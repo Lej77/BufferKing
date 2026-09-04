@@ -18,6 +18,7 @@ type Conf struct {
 	SaveIncompletePaused  bool
 	SaveIncompleteSeek    bool
 	SaveIncompleteSkipped bool
+	SaveIncompletePlayer  bool
 	SaveIncompleteQuit    bool
 	KeepPartials          bool
 	AllowedDomains        []string
@@ -171,14 +172,16 @@ const (
 )
 
 const (
-	CompletedNewRecording = "completed recording new track"
-	UnableToCompleteSkip  = "unable to complete recording track due to early track advancement"
-	UnableToCompletePause = "unable to complete recording track due to pause"
-	UnableToCompleteSeek  = "unable to complete recording track due to seek"
-	UnableToCompleteQuit  = "unable to complete recording track due to exiting BufferKing"
+	CompletedNewRecording  = "completed recording new track"
+	UnableToCompleteSkip   = "unable to complete recording track due to early track advancement"
+	UnableToCompletePlayer = "unable to complete recording track due to switching media player"
+	UnableToCompletePause  = "unable to complete recording track due to pause"
+	UnableToCompleteSeek   = "unable to complete recording track due to seek"
+	UnableToCompleteQuit   = "unable to complete recording track due to exiting BufferKing"
 
 	TrackFoundIgnoring    = "track found in library, ignoring:"
 	UrlDisallowedIgnoring = "track from disallowed URL, ignoring:"
+	TrackWithoutMetadata  = "track with unknown metadata, ignoring:"
 	TrackStartedRecording = "started recording new track:"
 	TrackUnableToResume   = "unable to resume recording incomplete track due to pause:"
 )

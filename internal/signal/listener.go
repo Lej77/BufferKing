@@ -3,6 +3,7 @@ package signal
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -88,9 +89,23 @@ func (l *Listener) Start(ctx context.Context) error {
 			timer         *time.Timer
 			timerChan     <-chan time.Time
 			latest        TrackSignal
+			prevSender    string
+			prevPlayer    string
 			hasPending    bool
 			isSuppressing bool
 		)
+
+		emitSignal := func() {
+			out := new(TrackSignal)
+			*out = latest
+			latest = TrackSignal{}
+
+			select {
+			case l.TrackSignals <- out:
+			case <-ctx.Done():
+				return
+			}
+		}
 
 		for {
 			select {
@@ -118,7 +133,30 @@ func (l *Listener) Start(ctx context.Context) error {
 					continue
 				}
 
+				// lookup media player name:
+				var player string
+				if sig.Sender == prevSender {
+					player = prevPlayer // cached
+				} else if playerName, err := l.ResolvePlayerName(sig.Sender); err == nil {
+					player = playerName // human readable
+				} else {
+					player = sig.Sender // fallback to unique name ":1.123"
+				}
+
+				// Cache player name:
+				prevSender = sig.Sender
+				prevPlayer = player
+
+				// Every signal should be associated with a media player:
+				ts.MediaPlayerName = player
+
 				// Merge updates
+				if latest.MediaPlayerName != "" && latest.MediaPlayerName != ts.MediaPlayerName && hasPending {
+					// can't merge updates from different media players, should be very rare to switch between players
+					hasPending = false
+					emitSignal()
+				}
+				latest.MediaPlayerName = ts.MediaPlayerName
 				if ts.Track.Title != "" {
 					latest.Track = ts.Track
 				}
@@ -135,16 +173,7 @@ func (l *Listener) Start(ctx context.Context) error {
 				if !isSuppressing {
 					if l.EmitInstantly {
 						// Emit instantly on leading edge
-
-						out := new(TrackSignal)
-						*out = latest
-						latest = TrackSignal{}
-
-						select {
-						case l.TrackSignals <- out:
-						case <-ctx.Done():
-							return
-						}
+						emitSignal()
 					} else {
 						hasPending = true
 					}
@@ -166,19 +195,33 @@ func (l *Listener) Start(ctx context.Context) error {
 				// Flush final merged state if new data arrived during suppression
 				if hasPending {
 					hasPending = false
-					out := new(TrackSignal)
-					*out = latest
-					latest = TrackSignal{}
-
-					select {
-					case l.TrackSignals <- out:
-					case <-ctx.Done():
-						return
-					}
+					emitSignal()
 				}
 			}
 		}
 	}()
 
 	return nil
+}
+
+// ResolvePlayerName resolves sender bus names like ":1.123" to their MPRIS name like "spotify".
+func (l *Listener) ResolvePlayerName(sender string) (string, error) {
+	var names []string
+	// Ask D-Bus daemon for all active well-known names
+	err := l.conn.BusObject().Call("org.freedesktop.DBus.ListNames", 0).Store(&names)
+	if err != nil {
+		return "", err
+	}
+
+	for _, name := range names {
+		if strings.HasPrefix(name, "org.mpris.MediaPlayer2.") {
+			var owner string
+			err := l.conn.BusObject().Call("org.freedesktop.DBus.GetNameOwner", 0, name).Store(&owner)
+			if err == nil && owner == sender {
+				// Returns "spotify" from "org.mpris.MediaPlayer2.spotify"
+				return strings.TrimPrefix(name, "org.mpris.MediaPlayer2."), nil
+			}
+		}
+	}
+	return "", fmt.Errorf("player name not found for sender %s", sender)
 }
