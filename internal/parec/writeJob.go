@@ -188,19 +188,13 @@ func (wj *WriteJob) EmbedMetadata() error {
 				_ = copyFile(tempArtPath, albumCoverPath)
 			}
 		}
-
 	}
 
-	// Base arguments
 	args := []string{"-y", "-i", originalPath}
 
 	// Add cover art input if available
 	if hasCover {
 		args = append(args, "-i", tempArtPath)
-	}
-
-	// Stream mapping
-	if hasCover {
 		args = append(args,
 			"-map", "0:a", // Use audio from first input (recorded file)
 			"-map", "1:v", // Use image from second input (album art)
@@ -210,7 +204,7 @@ func (wj *WriteJob) EmbedMetadata() error {
 		args = append(args, "-map", "0:a")
 	}
 
-	// Metadata flags
+	// Standard Universal Tags
 	args = append(args,
 		"-metadata", fmt.Sprintf("title=%s", t.Title),
 		"-metadata", fmt.Sprintf("artist=%s", t.Artist),
@@ -218,13 +212,28 @@ func (wj *WriteJob) EmbedMetadata() error {
 		"-metadata", fmt.Sprintf("album_artist=%s", t.AlbumArtist),
 		"-metadata", fmt.Sprintf("track=%d", t.TrackNumber),
 		"-metadata", fmt.Sprintf("disc=%d", t.DiscNumber),
-		"-metadata", fmt.Sprintf("purl=%s", t.URL),         // Public URL (ID3v2 WCOP/PURL)
-		"-metadata", fmt.Sprintf("comment=%s", t.TrackID),   // Track ID
 	)
 
-	// Add rating metadata if present (Spotify autoRating 0.0 - 1.0 mapped to 0-100)
+	// Format-Specific URL and Comment Tag Mapping
+	commentNewLine := ""
+	if t.URL != "" {
+		args = append(args, "-metadata", fmt.Sprintf("comment=%sURL: %s", commentNewLine, t.URL))
+		commentNewLine = "\n"
+	}
+	if t.TrackID != "" {
+		args = append(args, "-metadata", fmt.Sprintf("comment=%sTrackId: %s", commentNewLine, t.TrackID))
+		commentNewLine = "\n"
+	}
+	if t.ArtURL != "" {
+		args = append(args, "-metadata", fmt.Sprintf("comment=%sArt URL: %s", commentNewLine, t.TrackID))
+		commentNewLine = "\n"
+	}
+
+	// Add rating metadata if present (auto rating 0.0 - 1.0 mapped to 0-100)
 	if t.AutoRating > 0 && t.AutoRating <= 1 {
 		args = append(args, "-metadata", fmt.Sprintf("rating=%d", int(t.AutoRating*100)))
+	} else if t.AutoRating > 0 && t.AutoRating <= 100 {
+		args = append(args, "-metadata", fmt.Sprintf("rating=%d", int(t.AutoRating)))
 	}
 
 	// Direct stream copy (no re-encoding)
