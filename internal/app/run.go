@@ -45,14 +45,6 @@ func (a *App) Run(ctx context.Context) error {
 				return nil
 			}
 
-			// Handle initial state when lastTS is nil
-			if lastTS == nil {
-				if ts.Track.Title == "" {
-					// Ignore status-only signals (Play/Pause) before we ever receive track metadata
-					continue
-				}
-			}
-
 			diff := lastTS.Compare(ts)
 			switch diff {
 			case signal.NewTrack:

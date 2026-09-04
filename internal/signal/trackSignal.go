@@ -57,18 +57,11 @@ func (t *TrackSignal) Compare(tt *TrackSignal) Status {
 	if t == nil && tt == nil {
 		return None
 	}
-	hasNewMetadata := tt.Track.Title != "" || tt.Track.Artist != ""
 	if t == nil {
-		// First signal received
-		if tt.HasSeek {
-			return Seek
-		}
-		if tt.Status == Play && hasNewMetadata {
-			return NewTrack
-		}
-		return Paused
+		// First signal received, can't know for sure if safe to record, i.e. if new track
+		return None
 	} else if tt == nil {
-		// Can't assume audio is still playing, should never happen normally
+		// Should never happen! To be safe don't assume audio is still playing:
 		return Paused
 	}
 	// both t and tt are non null:
@@ -76,6 +69,7 @@ func (t *TrackSignal) Compare(tt *TrackSignal) Status {
 	if t.HasSeek != tt.HasSeek {
 		return Seek
 	}
+	hasNewMetadata := tt.Track.Title != "" || tt.Track.Artist != ""
 	if hasNewMetadata {
 		sameTrack := t.Title == tt.Title
 		sameTrack = sameTrack && t.Artist == tt.Artist
