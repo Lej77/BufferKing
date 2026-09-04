@@ -194,20 +194,16 @@ func (a *App) Print(color, message string, t *library.Track) {
 	switch a.Conf.Color {
 	case true:
 		if t == nil {
-			s = fmt.Sprintf("%s%s%s\n\n", color, message, colorReset)
+			s = fmt.Sprintf("%s%s%s\n", color, message, colorReset)
 		} else {
-			s = fmt.Sprintf("%s%s%s\n%s", color, message, colorReset, t)
+			s = fmt.Sprintf("\n%s%s%s\n%s", color, message, colorReset, t)
 		}
 	case false:
 		if t == nil {
-			s = fmt.Sprintf("%s\n\n", message)
+			s = fmt.Sprintf("%s\n", message)
 		} else {
-			s = fmt.Sprintf("%s\n%s", message, t)
+			s = fmt.Sprintf("\n%s\n%s", message, t)
 		}
-	}
-
-	if message == TrackFoundIgnoring {
-		s += "\n"
 	}
 
 	fmt.Println(s)
