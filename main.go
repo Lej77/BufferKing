@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	osSignal "os/signal"
+	"runtime/debug"
 	"strconv"
 	"strings"
 	"syscall"
@@ -15,7 +16,12 @@ import (
 	flag "github.com/spf13/pflag"
 )
 
-var Version = ""
+// Injected at build time via -ldflags. Defaults to "dev" for local builds.
+var (
+    version = "dev"
+    commit  = "none"
+    date    = "unknown"
+)
 
 func main() {
 	// Setup program exit
@@ -140,7 +146,48 @@ func source() (string, error) {
 }
 
 func printVersion() {
-	fmt.Printf("bufferking version: %s\n", Version)
+	v, c, d := getVersionInfo()
+
+	if c != "none" || d != "unknown" {
+		fmt.Printf("bufferking version %s (commit: %s, built: %s)\n", v, c, d)
+		return
+	}
+	fmt.Printf("bufferking version: %s\n", v)
+}
+
+func getVersionInfo() (string, string, string) {
+	v, c, d := version, commit, date
+
+	// If -ldflags wasn't used, check for version info embedded by `go install`
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		return v, c, d
+	}
+
+	// Fall back to tag version from `go install github.com/...@v1.2.3`
+	if v == "dev" && info.Main.Version != "" && info.Main.Version != "(devel)" {
+		v = info.Main.Version
+	}
+
+	// Fall back to VCS metadata (Git commit & build time embedded by Go 1.18+)
+	for _, setting := range info.Settings {
+		switch setting.Key {
+		case "vcs.revision":
+			if c == "none" && len(setting.Value) >= 7 {
+				c = setting.Value[:7]
+			}
+		case "vcs.time":
+			if d == "unknown" {
+				d = setting.Value
+			}
+		case "vcs.modified":
+			if setting.Value == "true" && c != "none" {
+				c += "-dirty"
+			}
+		}
+	}
+
+	return v, c, d
 }
 
 func printFormats() error {
