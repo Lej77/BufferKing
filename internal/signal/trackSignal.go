@@ -145,7 +145,7 @@ func (t *TrackSignal) Compare(tt *TrackSignal) Status {
 			return NewTrack
 		}
 	}
-	if t.HasSeek != tt.HasSeek && tt.HasSeek {
+	if tt.HasSeek {
 		return Seek
 	}
 	if !tt.Started.IsZero() && !tt.Started.Equal(t.Started) {
