@@ -102,11 +102,8 @@ func (t *TrackSignal) FormatSeekEvents(playbackStarted time.Time) string {
 		if total > 1 {
 			fmt.Fprintf(&sb, "\n\t%d: @ +%.1fs -> Seek to %.1fs (Change: %+.1fs)", i+1, offsetSec, targetSec, deltaSec)
 		} else {
-			fmt.Fprintf(&sb, " @ +%.1fs -> Seek to %.1fs (Change: %+.1fs)\n", offsetSec, targetSec, deltaSec)
+			fmt.Fprintf(&sb, " @ +%.1fs -> Seek to %.1fs (Change: %+.1fs)", offsetSec, targetSec, deltaSec)
 		}
-	}
-	if total > 1 {
-		fmt.Fprint(&sb, "\n")
 	}
 
 	return sb.String()
