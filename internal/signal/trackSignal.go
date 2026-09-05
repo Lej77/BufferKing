@@ -53,8 +53,6 @@ type TrackSignal struct {
 	Started time.Time
 	// Did seek to non-zero time in the track.
 	HasSeek bool
-	// A name that identifies the media player that emitted this signal.
-	MediaPlayerName string
 }
 
 // Compare compares the old tracksignal to the new tracksignal
@@ -71,7 +69,7 @@ func (t *TrackSignal) Compare(tt *TrackSignal) Status {
 	}
 	// both t and tt are non null:
 
-	if t.MediaPlayerName != tt.MediaPlayerName {
+	if t.MediaPlayer != tt.MediaPlayer {
 		return SwitchedPlayer
 	}
 
@@ -92,5 +90,5 @@ func (t *TrackSignal) Compare(tt *TrackSignal) Status {
 }
 
 func (t *TrackSignal) String() string {
-	return fmt.Sprintf("%s - status: %s - started at: %s - seek: %t - %s", t.MediaPlayerName, t.Status, t.Started, t.HasSeek, t.Track.SimpleString())
+	return fmt.Sprintf("status: %s - started at: %s - seek: %t - %s", t.Status, t.Started, t.HasSeek, &t.Track)
 }

@@ -16,8 +16,9 @@ type Listener struct {
 	TrackSignals chan<- *TrackSignal
 	ObjectPath   string
 	Parser
-	DebounceDuration time.Duration
-	EmitInstantly    bool
+	DebounceDuration     time.Duration
+	EmitInstantly        bool
+	MediaPlayerWhitelist []string
 
 	conn     *dbus.Conn
 	sigChan  chan *dbus.Signal
@@ -147,16 +148,32 @@ func (l *Listener) Start(ctx context.Context) error {
 				prevSender = sig.Sender
 				prevPlayer = player
 
+				if (len(l.MediaPlayerWhitelist) != 0) {
+					isAllowed := false
+					playerLowerCase := strings.ToLower(player)
+					for _, allowedPlayer := range l.MediaPlayerWhitelist {
+						allowedPlayer = strings.ToLower(allowedPlayer)
+						// Match: "firefox" or "firefox.instance_1_111"
+						if allowedPlayer == playerLowerCase || strings.HasPrefix(playerLowerCase, allowedPlayer+".") {
+							isAllowed = true
+							break
+						}
+					}
+					if !isAllowed {
+						continue
+					}
+				}
+
 				// Every signal should be associated with a media player:
-				ts.MediaPlayerName = player
+				ts.Track.MediaPlayer = player
 
 				// Merge updates
-				if latest.MediaPlayerName != "" && latest.MediaPlayerName != ts.MediaPlayerName && hasPending {
+				if latest.Track.MediaPlayer != "" && latest.Track.MediaPlayer != ts.Track.MediaPlayer && hasPending {
 					// can't merge updates from different media players, should be very rare to switch between players
 					hasPending = false
 					emitSignal()
 				}
-				latest.MediaPlayerName = ts.MediaPlayerName
+				latest.Track.MediaPlayer = ts.Track.MediaPlayer
 				if ts.Track.Title != "" {
 					if latest.Track.IsSameTrackAs(&ts.Track) {
 						latest.Track.UpdateTrack(&ts.Track)

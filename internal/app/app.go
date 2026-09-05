@@ -24,6 +24,7 @@ type Conf struct {
 	AllowedDomains        []string
 	AllowNoUrl            bool
 	AllowFileUrl          bool
+	AllowedMediaPlayers   []string
 	// ObjectPath points to the dbus object we're listening to.
 	// default: /org/mpris/MediaPlayer2
 	ObjectPath string
@@ -98,6 +99,7 @@ func (a *App) LoadConf() error {
 		TrackSignals: a.SignalChan,
 		ObjectPath:   c.ObjectPath,
 		Parser:       *signal.DefaultParser(),
+		MediaPlayerWhitelist: c.AllowedMediaPlayers,
 	}
 	return nil
 }
@@ -201,13 +203,13 @@ func (a *App) Print(color, message string, t *library.Track) {
 		if t == nil {
 			s = fmt.Sprintf("%s%s%s\n", color, message, colorReset)
 		} else {
-			s = fmt.Sprintf("\n%s%s%s\n%s", color, message, colorReset, t)
+			s = fmt.Sprintf("\n%s%s%s\n%s", color, message, colorReset, t.FancyString(true))
 		}
 	case false:
 		if t == nil {
 			s = fmt.Sprintf("%s\n", message)
 		} else {
-			s = fmt.Sprintf("\n%s\n%s", message, t)
+			s = fmt.Sprintf("\n%s\n%s", message, t.FancyString(false))
 		}
 	}
 

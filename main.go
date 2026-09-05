@@ -7,7 +7,6 @@ import (
 	osSignal "os/signal"
 	"runtime/debug"
 	"strconv"
-	"strings"
 	"syscall"
 
 	"github.com/Lej77/BufferKing/internal/app"
@@ -224,22 +223,23 @@ func userConf(formats, sources, version *bool) (*app.Conf, *signal.Parser) {
 	flag.StringVarP(&c.Device, "device", "D", "", "Device to record audio from.")
 	flag.StringVarP(&c.ObjectPath, "object-path", "o", "/org/mpris/MediaPlayer2", `DBus object path to listen to.`)
 	flag.StringVarP(&c.Format, "format", "f", "flac", `Audio format to use when recording.`)
+	flag.BoolVarP(&c.Color, "color", "c", false, `Use color coded output.`)
+
 	flag.BoolVarP(&c.SaveIncompleteSkipped, "keep-skipped", "S", false, `Keep incomplete recording due to skipping and mark the track as completed.`)
 	flag.BoolVarP(&c.SaveIncompletePlayer, "keep-after-media-player-switch", "M", false, `Keep incomplete recording due to switching media player and mark the track as completed.`)
 	flag.BoolVarP(&c.SaveIncompletePaused, "keep-paused", "P", false, `Keep incomplete recording due to pausing and mark the track as completed.`)
 	flag.BoolVarP(&c.SaveIncompleteSeek, "keep-after-seek", "E", false, `Keep incomplete recording due to seeking and mark the track as completed.`)
 	flag.BoolVarP(&c.SaveIncompleteQuit, "keep-at-quit", "Q", false, `Keep incomplete recording due to exiting BufferKing and mark the track as completed.`)
-	flag.BoolVarP(&c.KeepPartials, "keep-partials", "r", false, `Keep partial recording parts.`)
-	flag.BoolVarP(&c.Color, "color", "c", false, `Use color coded output.`)
-	flag.BoolVar(&c.AllowNoUrl, "allow-no-url", false, `If --allowed-domains is used then this flag can be enabled to also record tracks that don't have any URL, i.e. to record unknown tracks.`)
-	flag.BoolVar(&c.AllowFileUrl, "allow-file-url", false, `Record audio for tracks that announce their URL using a "file://" schema, i.e. record local tracks.`)
+	flag.BoolVarP(&c.KeepPartials, "keep-partials", "k", false, `Keep partial recording parts, i.e. do not delete hidden tracks that were never completed.`)
+
+	flag.StringSliceVarP(&c.AllowedDomains, "allowed-domains", "d", []string{}, "Comma-separated list of allowed domains to match a track's URL against (e.g., spotify.com,soundcloud.com,youtube.com)")
+	flag.BoolVarP(&c.AllowNoUrl, "allow-no-url", "n", false, `Record tracks that don't have any URL, by default such tracks are ignored.`)
+	flag.BoolVarP(&c.AllowFileUrl, "allow-file-url", "l", false, `Record audio for tracks that announce their URL using a "file://" schema, i.e. record local tracks.`)
+	flag.StringSliceVarP(&c.AllowedMediaPlayers, "allowed-media-players", "m", []string{}, "Comma-separated list of media players, events from other players will be completely ignored (e.g., spotify,firefox,io.bassi.Amberol,sonora)")
 
 	flag.BoolVar(formats, "list-formats", false, `List supported audio formats.`)
 	flag.BoolVar(sources, "list-sources", false, `List available audio sources to record.`)
 	flag.BoolVarP(version, "version", "v", false, `Print current version.`)
-
-	var rawDomains string
-	flag.StringVarP(&rawDomains, "allowed-domains", "d", "", "Comma-separated list of allowed domains (e.g., spotify.com,soundcloud.com,youtube.com)")
 
 	pD := signal.DefaultParser()
 	p := *signal.DefaultParser()
@@ -260,17 +260,6 @@ func userConf(formats, sources, version *bool) (*app.Conf, *signal.Parser) {
 	flag.StringVar(&p.PauseToken, "pause-token", pD.PauseToken, `DBus pause token`)
 
 	flag.Parse()
-
-	// Parse rawDomains string into c.AllowedDomains
-	if rawDomains != "" {
-		domains := strings.Split(rawDomains, ",")
-		for _, domain := range domains {
-			trimmed := strings.TrimSpace(domain)
-			if trimmed != "" {
-				c.AllowedDomains = append(c.AllowedDomains, trimmed)
-			}
-		}
-	}
 
 	return &c, &p
 }

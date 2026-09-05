@@ -51,7 +51,7 @@ func (a *App) Run(ctx context.Context) error {
 			case signal.NewTrack, signal.SwitchedPlayer:
 				if ts.Started.IsZero() {
 					ts.Started = time.Now()
-				} else if ts.Title == "" && lastTS != nil && lastTS.MediaPlayerName == ts.MediaPlayerName {
+				} else if ts.Title == "" && lastTS != nil && lastTS.Track.MediaPlayer == ts.Track.MediaPlayer {
 					// Likely did seek to beginning of track, re-use info
 					ts.Track = lastTS.Track
 				}
@@ -111,7 +111,7 @@ func (a *App) Run(ctx context.Context) error {
 				var track *library.Track = nil
 				if ts != nil && ts.Track.Title != "" {
 					track = &ts.Track
-				} else if lastTS != nil && lastTS.Track.Title != "" && lastTS.MediaPlayerName == ts.MediaPlayerName {
+				} else if lastTS != nil && lastTS.Track.Title != "" && lastTS.Track.MediaPlayer == ts.Track.MediaPlayer {
 					track = &lastTS.Track
 				}
 				if track != nil {
@@ -141,7 +141,7 @@ func (a *App) Run(ctx context.Context) error {
 			case signal.None:
 			}
 
-			if diff != signal.NewTrack && lastTS != nil && lastTS.MediaPlayerName == ts.MediaPlayerName {
+			if diff != signal.NewTrack && lastTS != nil && lastTS.Track.MediaPlayer == ts.Track.MediaPlayer {
 				// preserve old info except for new changes
 				lastTS.Track.UpdateTrack(&ts.Track)
 				if ts.Status != signal.None {

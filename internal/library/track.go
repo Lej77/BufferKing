@@ -20,6 +20,7 @@ type Track struct {
 	TrackID     string
 	AutoRating  float64
 	Format      string
+	MediaPlayer string
 }
 
 func (t *Track) RelPath() string {
@@ -78,26 +79,30 @@ func (t *Track) UpdateTrack(other *Track) {
 	if other.Format != "" {
 		t.Format = other.Format
 	}
+	if other.MediaPlayer != "" {
+		t.MediaPlayer = other.MediaPlayer
+	}
 }
 
-func (t *Track) SimpleString() string {
-	return fmt.Sprintf("Artist: %s\t Album: %s\t Track #%d\t Title: %s\t Length: %s",
-		t.Artist, t.Album, t.TrackNumber, t.Title, t.Length)
-}
 func (t *Track) String() string {
-	// ANSI Color & Formatting Constants
-	const (
-		reset   = "\033[0m"
-		bold    = "\033[1m"
-		dim     = "\033[2m"
-		cyan    = "\033[36m"
-		green   = "\033[32m"
-		magenta = "\033[35m"
-		yellow  = "\033[33m"
-		blue    = "\033[34m"
-	)
+	return fmt.Sprintf("Artist: %s\t Album: %s\t Track #%d\t Title: %s\t Length: %s\t Player: %s",
+		t.Artist, t.Album, t.TrackNumber, t.Title, t.Length, t.MediaPlayer)
+}
 
-	// Format Track / Disc numbers (e.g., "02" or "Disc 1, #02")
+func (t *Track) FancyString(enableColors bool) string {
+	// ANSI Color & Formatting Constants (empty strings if disabled)
+	var reset, bold, dim, cyan, green, yellow, blue string
+	if enableColors {
+		reset = "\033[0m"
+		bold = "\033[1m"
+		dim = "\033[2m"
+		cyan = "\033[36m"
+		green = "\033[32m"
+		yellow = "\033[33m"
+		blue = "\033[34m"
+	}
+
+	// Track / Disc numbers formatting (e.g., "02" or "Disc 1, #02")
 	trackStr := fmt.Sprintf("%02d", t.TrackNumber)
 	if t.DiscNumber > 0 {
 		trackStr = fmt.Sprintf("Disc %d, #%02d", t.DiscNumber, t.TrackNumber)
@@ -112,38 +117,84 @@ func (t *Track) String() string {
 		green, t.Length, reset,
 	)
 
-	// Secondary Line: Track/Disc, Format, Rating
-	out += fmt.Sprintf("  %s├─%s %sTrack:%s %-12s %sFormat:%s %-6s %sRating:%s %.0f%%\n",
-		dim, reset,
-		yellow, reset, trackStr,
-		yellow, reset, strings.ToUpper(t.Format),
-		yellow, reset, t.AutoRating*100,
-	)
+	// Details as key-value pairs
+	type detail struct {
+		label string
+		value string
+		color string
+	}
 
-	// Optional Line: Album Artist (only if different from Track Artist)
+	// Always included details
+	details := []detail{
+		{
+			label: "Track",
+			value: fmt.Sprintf("%-12s %sFormat:%s %-6s %sRating:%s %.0f%%",
+				trackStr,
+				yellow, reset, strings.ToUpper(t.Format),
+				yellow, reset, t.AutoRating*100,
+			),
+			color: yellow,
+		},
+	}
+
+	// Conditional details
+	if t.MediaPlayer != "" {
+		details = append(details, detail{
+			label: "Media Player",
+			value: t.MediaPlayer,
+			color: yellow,
+		})
+	}
+
 	if t.AlbumArtist != "" && t.AlbumArtist != t.Artist {
-		out += fmt.Sprintf("  %s├─%s %sAlbum Artist:%s %s\n",
-			dim, reset, yellow, reset, t.AlbumArtist)
+		details = append(details, detail{
+			label: "Album Artist",
+			value: t.AlbumArtist,
+			color: yellow,
+		})
 	}
 
-	// Optional Line: Track ID / Web URL
+	if t.TrackID != "" {
+		details = append(details, detail{
+			label: "Track ID",
+			value: t.TrackID,
+			color: blue,
+		})
+	}
+
 	if t.URL != "" {
-		out += fmt.Sprintf("  %s├─%s %sURL:%s %s%s%s\n",
-			dim, reset, blue, reset, dim, t.URL, reset)
+		details = append(details, detail{
+			label: "URL",
+			value: fmt.Sprintf("%s%s%s", dim, t.URL, reset),
+			color: blue,
+		})
 	}
 
-	// Optional Line: Album Art URL
 	if t.ArtURL != "" {
 		artStr := t.ArtURL
 		if len(artStr) > 80 && strings.HasPrefix(artStr, "data:") {
 			artStr = artStr[:50] + "... [base64 truncated]"
 		}
-		out += fmt.Sprintf("  %s└─%s %sArt:%s %s%s%s",
-			dim, reset, blue, reset, dim, artStr, reset)
-	} else {
-		// Clean trailing connector if ArtURL is missing
-		out = strings.TrimSuffix(out, "\n")
+		details = append(details, detail{
+			label: "Art",
+			value: fmt.Sprintf("%s%s%s", dim, artStr, reset),
+			color: blue,
+		})
 	}
 
-	return out
+	// Build tree output
+	for i, d := range details {
+		connector := "├─"
+		if i == len(details)-1 {
+			connector = "└─"
+		}
+
+		out += fmt.Sprintf("  %s%s%s %s%s:%s %s\n",
+			dim, connector, reset,
+			d.color, d.label, reset,
+			d.value,
+		)
+	}
+
+	return strings.TrimSuffix(out, "\n")
 }
