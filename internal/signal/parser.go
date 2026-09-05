@@ -55,13 +55,15 @@ func (p *Parser) Parse(sign *dbus.Signal) (*TrackSignal, error) {
 		return &TrackSignal{HasSeek: false, Started: time.Now()}, nil
 	}
 	if sign.Name == "org.mpris.MediaPlayer2.Player.Seeked" {
+		var seekEvents []SeekEvent
 		if len(sign.Body) > 0 {
 			seek := castToInt64(sign.Body[0])
 			if seek == 0 {
 				return &TrackSignal{HasSeek: false, Started: time.Now()}, nil
 			}
+			seekEvents = append(seekEvents, SeekEvent{Time: time.Now(), Value: seek})
 		}
-		return &TrackSignal{HasSeek: true}, nil
+		return &TrackSignal{HasSeek: true, SeekEvents: seekEvents}, nil
 	}
 	if sign.Name != "org.freedesktop.DBus.Properties.PropertiesChanged" {
 		// ignore other signals

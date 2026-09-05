@@ -24,6 +24,10 @@ type WriteJob struct {
 	stopped time.Time
 }
 
+func (wj *WriteJob) StartTime() time.Time {
+	return wj.started
+}
+
 func (wj *WriteJob) Start(ctx context.Context) error {
 	p := wj.parec
 	wj.started = time.Now()

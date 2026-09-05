@@ -231,6 +231,7 @@ func userConf(formats, sources, version *bool) (*app.Conf, *signal.Parser) {
 	flag.BoolVarP(&c.SaveIncompleteSeek, "keep-after-seek", "E", false, `Keep incomplete recording due to seeking and mark the track as completed.`)
 	flag.BoolVarP(&c.SaveIncompleteQuit, "keep-at-quit", "Q", false, `Keep incomplete recording due to exiting BufferKing and mark the track as completed.`)
 	flag.BoolVarP(&c.KeepPartials, "keep-partials", "k", false, `Keep partial recording parts, i.e. do not delete hidden tracks that were never completed.`)
+	flag.Int64VarP(&c.IgnoredSeekThreshold, "ignored-seek-threshold", "i", 900, `Seek offsets that are shorter than this many milliseconds will be ignored.`)
 
 	flag.StringSliceVarP(&c.AllowedDomains, "allowed-domains", "d", []string{}, "Comma-separated list of allowed domains to match a track's URL against (e.g., spotify.com,soundcloud.com,youtube.com)")
 	flag.BoolVarP(&c.AllowNoUrl, "allow-no-url", "n", false, `Record tracks that don't have any URL, by default such tracks are ignored.`)

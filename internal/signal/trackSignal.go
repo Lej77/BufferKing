@@ -2,6 +2,7 @@ package signal
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Lej77/BufferKing/internal/library"
@@ -45,6 +46,35 @@ func (s Status) String() string {
 	return "INVALID_STATUS"
 }
 
+type SeekEvent struct {
+	Time  time.Time
+	Value int64
+}
+
+// How far into playback this seek event occurred.
+func (e SeekEvent) Offset(playbackStarted time.Time) time.Duration {
+	return e.Time.Sub(playbackStarted)
+}
+
+// The seek target position.
+func (e SeekEvent) Target() time.Duration {
+	return time.Duration(e.Value) * time.Microsecond
+}
+
+// The change between target position and untouched playback position.
+func (e SeekEvent) Delta(playbackStarted time.Time) time.Duration {
+	return e.Target() - e.Offset(playbackStarted)
+}
+
+// Returns true if the absolute seek delta exceeds minThreshold.
+func (e SeekEvent) IsSignificant(playbackStarted time.Time, minThreshold time.Duration) bool {
+	d := e.Delta(playbackStarted)
+	if d < 0 {
+		d = -d
+	}
+	return d >= minThreshold
+}
+
 type TrackSignal struct {
 	library.Track
 	Status
@@ -52,7 +82,46 @@ type TrackSignal struct {
 	// The time when the song Started playing, can change if seek to 0 or using previous song command.
 	Started time.Time
 	// Did seek to non-zero time in the track.
-	HasSeek bool
+	HasSeek    bool
+	SeekEvents []SeekEvent
+}
+
+func (t *TrackSignal) FormatSeekEvents(playbackStarted time.Time) string {
+	if playbackStarted.IsZero() {
+		return ""
+	}
+
+	var sb strings.Builder
+	total := len(t.SeekEvents)
+
+	for i, e := range t.SeekEvents {
+		offsetSec := e.Offset(playbackStarted).Round(100 * time.Millisecond).Seconds()
+		targetSec := e.Target().Round(100 * time.Millisecond).Seconds()
+		deltaSec := e.Delta(playbackStarted).Round(100 * time.Millisecond).Seconds()
+
+		if total > 1 {
+			fmt.Fprintf(&sb, "\n\t%d: @ +%.1fs -> Seek to %.1fs (Change: %+.1fs)", i+1, offsetSec, targetSec, deltaSec)
+		} else {
+			fmt.Fprintf(&sb, " @ +%.1fs -> Seek to %.1fs (Change: %+.1fs)\n", offsetSec, targetSec, deltaSec)
+		}
+	}
+	if total > 1 {
+		fmt.Fprint(&sb, "\n")
+	}
+
+	return sb.String()
+}
+
+func (ts *TrackSignal) HasSignificantSeek(playbackStarted time.Time, threshold time.Duration) bool {
+	if len(ts.SeekEvents) == 0 || threshold == 0 {
+		return true
+	}
+	for _, e := range ts.SeekEvents {
+		if e.IsSignificant(playbackStarted, threshold) {
+			return true
+		}
+	}
+	return false
 }
 
 // Compare compares the old tracksignal to the new tracksignal

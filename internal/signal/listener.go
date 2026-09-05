@@ -148,6 +148,7 @@ func (l *Listener) Start(ctx context.Context) error {
 				prevSender = sig.Sender
 				prevPlayer = player
 
+				// Filter out signals from ignored media players
 				if (len(l.MediaPlayerWhitelist) != 0) {
 					isAllowed := false
 					playerLowerCase := strings.ToLower(player)
@@ -173,14 +174,19 @@ func (l *Listener) Start(ctx context.Context) error {
 					hasPending = false
 					emitSignal()
 				}
-				latest.Track.MediaPlayer = ts.Track.MediaPlayer
 				if ts.Track.Title != "" {
 					if latest.Track.IsSameTrackAs(&ts.Track) {
 						latest.Track.UpdateTrack(&ts.Track)
 					} else {
+						if (hasPending) {
+							// Can't merge info from different tracks
+							hasPending = false
+							emitSignal()
+						}
 						latest.Track = ts.Track
 					}
 				}
+				latest.Track.MediaPlayer = ts.Track.MediaPlayer
 				if ts.Status != None {
 					latest.Status = ts.Status
 				}
@@ -189,6 +195,9 @@ func (l *Listener) Start(ctx context.Context) error {
 				}
 				if ts.HasSeek || !ts.Started.IsZero() {
 					latest.HasSeek = ts.HasSeek
+				}
+				if len(ts.SeekEvents) > 0 {
+					latest.SeekEvents = append(latest.SeekEvents, ts.SeekEvents...)
 				}
 
 				if !isSuppressing {

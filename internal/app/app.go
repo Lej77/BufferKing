@@ -25,6 +25,7 @@ type Conf struct {
 	AllowNoUrl            bool
 	AllowFileUrl          bool
 	AllowedMediaPlayers   []string
+	IgnoredSeekThreshold  int64
 	// ObjectPath points to the dbus object we're listening to.
 	// default: /org/mpris/MediaPlayer2
 	ObjectPath string
@@ -96,9 +97,9 @@ func (a *App) LoadConf() error {
 	}
 
 	a.Listener = &signal.Listener{
-		TrackSignals: a.SignalChan,
-		ObjectPath:   c.ObjectPath,
-		Parser:       *signal.DefaultParser(),
+		TrackSignals:         a.SignalChan,
+		ObjectPath:           c.ObjectPath,
+		Parser:               *signal.DefaultParser(),
 		MediaPlayerWhitelist: c.AllowedMediaPlayers,
 	}
 	return nil
@@ -180,6 +181,7 @@ const (
 	UnableToCompletePause  = "unable to complete recording track due to pause"
 	UnableToCompleteSeek   = "unable to complete recording track due to seek"
 	UnableToCompleteQuit   = "unable to complete recording track due to exiting BufferKing"
+	IgnoredSeek            = "ignored seek event"
 
 	TrackFoundIgnoring    = "track found in library, ignoring:"
 	UrlDisallowedIgnoring = "track from disallowed URL, ignoring:"

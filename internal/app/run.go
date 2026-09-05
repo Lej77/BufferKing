@@ -124,19 +124,27 @@ func (a *App) Run(ctx context.Context) error {
 				}
 
 			case signal.Seek:
-				wj, err := p.StopWriteJob()
-				if err != nil {
-					return err
-				}
+				if job := p.WriteJob(); job != nil {
+					started := job.StartTime()
+					seekInfo := ts.FormatSeekEvents(started)
 
-				go func() {
-					if wj != nil {
-						err := a.finishWJ(wj, c.SaveIncompleteSeek, UnableToCompleteSeek)
+					if ts.HasSignificantSeek(started, time.Duration(c.IgnoredSeekThreshold)*time.Millisecond) {
+						wj, err := p.StopWriteJob()
 						if err != nil {
-							fmt.Println(err)
+							return err
 						}
+
+						go func() {
+							if wj != nil {
+								if err := a.finishWJ(wj, c.SaveIncompleteSeek, UnableToCompleteSeek+seekInfo); err != nil {
+									fmt.Println(err)
+								}
+							}
+						}()
+					} else {
+						a.Print(colorYellow, IgnoredSeek+seekInfo, nil)
 					}
-				}()
+				}
 
 			case signal.None:
 			}
