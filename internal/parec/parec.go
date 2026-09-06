@@ -33,7 +33,7 @@ func DefaultEncodeParams() *EncodeParams {
 		// match defaults of parec itself:
 		Channels:    2,
 		SampleRate:  44100,
-		ParecFormat: "s16ne",
+		ParecFormat: "s16le", // parec defaults to s16ne, but that is not supported by ffmpeg
 	}
 }
 
