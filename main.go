@@ -219,7 +219,7 @@ func printSources() error {
 
 // userConf parses users flag input into a Conf struct
 func userConf(formats, sources, version *bool) (*app.Conf, *signal.Parser) {
-	c := app.Conf{}
+	c := app.Conf{Encode: parec.DefaultEncodeParams()}
 	flag.StringVarP(&c.Device, "device", "D", "", "Device to record audio from.")
 	flag.StringVarP(&c.ObjectPath, "object-path", "o", "/org/mpris/MediaPlayer2", `DBus object path to listen to.`)
 	flag.StringVarP(&c.Format, "format", "f", "flac", `Audio format to use when recording.`)
@@ -242,6 +242,14 @@ func userConf(formats, sources, version *bool) (*app.Conf, *signal.Parser) {
 	flag.BoolVar(sources, "list-sources", false, `List available audio sources to record.`)
 	flag.BoolVarP(version, "version", "v", false, `Print current version.`)
 
+	encD := parec.DefaultEncodeParams()
+	enc := c.Encode
+	flag.BoolVarP(&enc.FfmpegEncode, "ffmpeg-encode", "e", encD.FfmpegEncode, "Use ffmpeg to re-encode the output to support custom bitrate and/or MP3/Opus formats")
+	flag.StringVarP(&enc.Bitrate, "bitrate", "b", encD.Bitrate, "Target audio bitrate (e.g. 160k, 320k); automatically enables --ffmpeg-encode")
+	flag.Int64Var(&enc.Channels, "channels", encD.Channels, "Number of channels (1 for mono, 2 for stereo)")
+	flag.Int64Var(&enc.SampleRate, "sample-rate", encD.SampleRate, "Sampling rate in Hz (e.g. 44100, 48000)")
+	flag.StringVar(&enc.ParecFormat, "sample-format", encD.ParecFormat, "Raw PCM capture sample format passed to parec (e.g. s16ne, s16le)")
+
 	pD := signal.DefaultParser()
 	p := *signal.DefaultParser()
 	flag.StringVar(&p.MetaDataKey, "metadata-key", pD.MetaDataKey, `DBus metadata key`)
@@ -261,6 +269,9 @@ func userConf(formats, sources, version *bool) (*app.Conf, *signal.Parser) {
 	flag.StringVar(&p.PauseToken, "pause-token", pD.PauseToken, `DBus pause token`)
 
 	flag.Parse()
+	if flag.CommandLine.Changed("bitrate") {
+		enc.FfmpegEncode = true
+	}
 
 	return &c, &p
 }

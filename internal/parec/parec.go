@@ -18,10 +18,30 @@ const (
 	colorWhite  = "\033[37m"
 )
 
+type EncodeParams struct {
+	FfmpegEncode bool
+	Bitrate      string
+	Channels     int64
+	SampleRate   int64
+	ParecFormat  string
+}
+
+func DefaultEncodeParams() *EncodeParams {
+	return &EncodeParams{
+		FfmpegEncode: false,
+		Bitrate:      "320k",
+		// match defaults of parec itself:
+		Channels:    2,
+		SampleRate:  44100,
+		ParecFormat: "s16ne",
+	}
+}
+
 type Parec struct {
 	Root       string
 	Device     string
 	Format     string
+	Encode     *EncodeParams
 	formats    []string
 	writeJob   *WriteJob
 	partsCount int

@@ -33,6 +33,7 @@ type Conf struct {
 	// valid device strings look like: alsa_output.pci-0000_00_1f.3.analog-stereo.monitor
 	Device string
 	Format string
+	Encode *parec.EncodeParams
 	Color  bool
 }
 
@@ -89,6 +90,7 @@ func (a *App) LoadConf() error {
 		Root:   c.Root,
 		Device: c.Device,
 		Format: c.Format,
+		Encode: c.Encode,
 	}
 
 	a.Library, err = library.LoadLibrary(c.Root)

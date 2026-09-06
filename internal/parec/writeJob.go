@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,8 +18,9 @@ import (
 type WriteJob struct {
 	Track *library.Track
 
-	parec *Parec
-	cmd   *exec.Cmd
+	parec     *Parec
+	parecCmd  *exec.Cmd
+	ffmpegCmd *exec.Cmd
 
 	started time.Time
 	stopped time.Time
@@ -30,8 +32,10 @@ func (wj *WriteJob) StartTime() time.Time {
 
 func (wj *WriteJob) Start(ctx context.Context) error {
 	p := wj.parec
+	e := p.Encode
 	wj.started = time.Now()
-	if wj.cmd != nil {
+
+	if wj.parecCmd != nil || wj.ffmpegCmd != nil {
 		return nil
 	}
 
@@ -44,45 +48,99 @@ func (wj *WriteJob) Start(ctx context.Context) error {
 	// Make sure the directory we'll be writing to exists
 	dir := filepath.Dir(writePath)
 	fileName := wj.FileName()
-	err := os.MkdirAll(dir, os.ModePerm)
-	if err != nil {
+	if err := os.MkdirAll(dir, os.ModePerm); err != nil {
 		return err
 	}
 
-	wj.cmd = exec.CommandContext(ctx, "parec",
-		"-d", p.Device,
-		"--file-format="+p.Format,
-		filepath.Join(dir, fileName),
-	)
+	filePath := filepath.Join(dir, fileName)
 
-	err = wj.cmd.Start()
-	if err != nil {
-		return err
+	parecArgs := []string{
+        "-d", p.Device,
+        "--format=" + e.ParecFormat,
+        fmt.Sprintf("--rate=%d", e.SampleRate),
+        fmt.Sprintf("--channels=%d", e.Channels),
+    }
+
+    if !e.FfmpegEncode {
+		// Direct recording (parec only)
+		parecArgs = append(parecArgs, "--file-format="+p.Format, filePath)
+        wj.parecCmd = exec.CommandContext(ctx, "parec", parecArgs...)
+        return wj.parecCmd.Start()
+    }
+
+    // Re-encoding pipeline (parec -> ffmpeg)
+    wj.parecCmd = exec.CommandContext(ctx, "parec", parecArgs...)
+
+	ffmpegArgs := []string{
+		"-y", // Overwrite output file without asking
+		"-f", e.ParecFormat,
+		"-ar", strconv.FormatInt(e.SampleRate, 10),
+		"-ac", strconv.FormatInt(e.Channels, 10),
+		"-i", "pipe:0", // Read from stdin
 	}
+
+	if e.Bitrate != "" && strings.ToLower(e.Bitrate) != "lossless" {
+		ffmpegArgs = append(ffmpegArgs, "-b:a", e.Bitrate)
+	}
+
+	ffmpegArgs = append(ffmpegArgs, filePath)
+	wj.ffmpegCmd = exec.CommandContext(ctx, "ffmpeg", ffmpegArgs...)
+
+	pipeReader, pipeWriter := io.Pipe()
+	wj.parecCmd.Stdout = pipeWriter
+	wj.ffmpegCmd.Stdin = pipeReader
+
+	if err := wj.parecCmd.Start(); err != nil {
+		pipeWriter.Close()
+		pipeReader.Close()
+		return fmt.Errorf("failed starting parec: %w", err)
+	}
+
+	if err := wj.ffmpegCmd.Start(); err != nil {
+		_ = wj.parecCmd.Process.Kill()
+		pipeWriter.Close()
+		pipeReader.Close()
+		return fmt.Errorf("failed starting ffmpeg: %w", err)
+	}
+
+	// Monitor parec: if it exits (or crashes), close the pipe to signal ffmpeg
+	go func() {
+		err := wj.parecCmd.Wait()
+		if err != nil {
+			_ = pipeWriter.CloseWithError(fmt.Errorf("parec failed: %w", err))
+		} else {
+			_ = pipeWriter.Close() // Normal EOF
+		}
+	}()
 
 	return nil
 }
 
 func (wj *WriteJob) Stop() error {
-	cmd := wj.cmd
-	if cmd == nil || cmd.Process == nil {
+	if wj.parecCmd == nil || wj.parecCmd.Process == nil {
 		return nil
 	}
 
-	err := cmd.Process.Signal(os.Interrupt)
-	if err != nil {
-		_ = cmd.Process.Kill()
-		wj.stopped = time.Now()
+	defer func() { wj.stopped = time.Now() }()
+
+	if err := wj.parecCmd.Process.Signal(os.Interrupt); err != nil {
+		_ = wj.parecCmd.Process.Kill()
+	}
+
+	// If re-encoding, wait for ffmpeg to receive EOF, finish encoding, and write file headers
+	if wj.ffmpegCmd != nil && wj.ffmpegCmd.Process != nil {
+		err := wj.ffmpegCmd.Wait()
+		if err != nil && (strings.Contains(err.Error(), "signal: killed") || strings.Contains(err.Error(), "signal: interrupt")) {
+			return nil
+		}
 		return err
 	}
 
-	//Wait for parec to stop
-	err = cmd.Wait()
+	// Direct recording mode: wait on parec directly
+	err := wj.parecCmd.Wait()
 	if err != nil && (strings.Contains(err.Error(), "signal: killed") || strings.Contains(err.Error(), "signal: interrupt")) {
-		// ignore error that indicates it was killed early
-		err = nil
+		return nil
 	}
-	wj.stopped = time.Now()
 	return err
 }
 
