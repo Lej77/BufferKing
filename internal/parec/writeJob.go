@@ -224,6 +224,9 @@ func copyFile(src, dst string) error {
 
 // Embed metadata into written file. Should run just after Stop.
 func (wj *WriteJob) EmbedMetadata() error {
+	if !wj.parec.EmbedMetadata {
+		return nil
+	}
 	if wj == nil || wj.Track == nil {
 		return fmt.Errorf("writejob or track is nil")
 	}

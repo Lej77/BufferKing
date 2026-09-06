@@ -38,13 +38,14 @@ func DefaultEncodeParams() *EncodeParams {
 }
 
 type Parec struct {
-	Root       string
-	Device     string
-	Format     string
-	Encode     *EncodeParams
-	formats    []string
-	writeJob   *WriteJob
-	partsCount int
+	Root          string
+	Device        string
+	Format        string
+	Encode        *EncodeParams
+	EmbedMetadata bool
+	formats       []string
+	writeJob      *WriteJob
+	partsCount    int
 }
 
 func (p *Parec) WriteJob() *WriteJob {

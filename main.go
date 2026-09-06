@@ -223,6 +223,7 @@ func userConf(formats, sources, version *bool) (*app.Conf, *signal.Parser) {
 	flag.StringVarP(&c.Device, "device", "D", "", "Device to record audio from.")
 	flag.StringVarP(&c.ObjectPath, "object-path", "o", "/org/mpris/MediaPlayer2", `DBus object path to listen to.`)
 	flag.StringVarP(&c.Format, "format", "f", "flac", `Audio format to use when recording.`)
+	flag.BoolVar(&c.NoEmbedMetadata, "no-embed-metadata", false, "Disable embedding metadata such as album, artist and cover art into the output file.")
 	flag.BoolVarP(&c.Color, "color", "c", false, `Use color coded output.`)
 
 	flag.BoolVarP(&c.SaveIncompleteSkipped, "keep-skipped", "S", false, `Keep incomplete recording due to skipping and mark the track as completed.`)

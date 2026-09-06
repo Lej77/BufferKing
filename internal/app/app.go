@@ -31,10 +31,11 @@ type Conf struct {
 	ObjectPath string
 	// Device can be found using `$ pacmd list | grep .monitor`
 	// valid device strings look like: alsa_output.pci-0000_00_1f.3.analog-stereo.monitor
-	Device string
-	Format string
-	Encode *parec.EncodeParams
-	Color  bool
+	Device          string
+	Format          string
+	Encode          *parec.EncodeParams
+	NoEmbedMetadata bool
+	Color           bool
 }
 
 // IsAllowedDomain checks if the URL matches any allowed domains.
@@ -87,10 +88,11 @@ func (a *App) LoadConf() error {
 	var err error
 	c := a.Conf
 	a.Parec = &parec.Parec{
-		Root:   c.Root,
-		Device: c.Device,
-		Format: c.Format,
-		Encode: c.Encode,
+		Root:          c.Root,
+		Device:        c.Device,
+		Format:        c.Format,
+		Encode:        c.Encode,
+		EmbedMetadata: !c.NoEmbedMetadata,
 	}
 
 	a.Library, err = library.LoadLibrary(c.Root)
@@ -115,15 +117,12 @@ func (a *App) finishWJ(wj *parec.WriteJob, saveIncomplete bool, failMsg string) 
 	l := a.Library
 	if wj != nil {
 		if completed, _ := wj.Completed(); completed {
-			err := wj.EmbedMetadata()
-			if err != nil {
-				return err
+			if err := wj.EmbedMetadata(); err != nil {
+				fmt.Println(FailedEmbedMetadata, err)
 			}
-
 			l.Lock()
 			l.MarkStored(wj.Track)
-			err = l.FileMarkStored(wj.Track, wj.FileName())
-			if err != nil {
+			if err := l.FileMarkStored(wj.Track, wj.FileName()); err != nil {
 				l.Unlock()
 				return err
 			}
@@ -131,15 +130,12 @@ func (a *App) finishWJ(wj *parec.WriteJob, saveIncomplete bool, failMsg string) 
 			a.Print(colorGreen, CompletedNewRecording, nil)
 		} else {
 			if saveIncomplete {
-				err := wj.EmbedMetadata()
-				if err != nil {
-					return err
+				if err := wj.EmbedMetadata(); err != nil {
+					fmt.Println(FailedEmbedMetadata, err)
 				}
-
 				l.Lock()
 				l.MarkStored(wj.Track)
-				err = l.FileMarkStored(wj.Track, wj.FileName())
-				if err != nil {
+				if err := l.FileMarkStored(wj.Track, wj.FileName()); err != nil {
 					l.Unlock()
 					return err
 				}
@@ -155,7 +151,9 @@ func (a *App) finishWJ(wj *parec.WriteJob, saveIncomplete bool, failMsg string) 
 				}
 			} else {
 				// If keeping partials then save metadata for them:
-				wj.EmbedMetadata()
+				if err := wj.EmbedMetadata(); err != nil {
+					fmt.Println(FailedEmbedMetadata, err)
+				}
 			}
 			a.Print(colorYellow, failMsg, nil)
 		}
@@ -184,6 +182,7 @@ const (
 	UnableToCompleteSeek   = "unable to complete recording track due to seek"
 	UnableToCompleteQuit   = "unable to complete recording track due to exiting BufferKing"
 	IgnoredSeek            = "ignored seek event"
+	FailedEmbedMetadata    = "failed to embed metadata using ffmpeg: "
 
 	TrackFoundIgnoring    = "track found in library, ignoring:"
 	UrlDisallowedIgnoring = "track from disallowed URL, ignoring:"
@@ -201,21 +200,13 @@ func (a *App) NewPrinter(color, message string, t *library.Track) MsgPrinter {
 }
 
 func (a *App) Print(color, message string, t *library.Track) {
-	var s string
-	switch a.Conf.Color {
-	case true:
-		if t == nil {
-			s = fmt.Sprintf("%s%s%s\n", color, message, colorReset)
-		} else {
-			s = fmt.Sprintf("\n%s%s%s\n%s", color, message, colorReset, t.FancyString(true))
-		}
-	case false:
-		if t == nil {
-			s = fmt.Sprintf("%s\n", message)
-		} else {
-			s = fmt.Sprintf("\n%s\n%s", message, t.FancyString(false))
-		}
+	useColor := a.Conf.Color
+	if useColor {
+		message = fmt.Sprintf("%s%s%s", color, message, colorReset)
 	}
-
-	fmt.Println(s)
+	if t == nil {
+		fmt.Println(message)
+	} else {
+		fmt.Printf("\n%s\n%s\n", message, t.FancyString(useColor))
+	}
 }
