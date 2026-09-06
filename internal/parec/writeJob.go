@@ -36,7 +36,7 @@ func (wj *WriteJob) StartTime() time.Time {
 
 func (wj *WriteJob) Start(ctx context.Context) error {
 	wj.parecStderr.Reset()
-    wj.ffmpegStderr.Reset()
+	wj.ffmpegStderr.Reset()
 
 	p := wj.parec
 	e := p.Encode
@@ -68,7 +68,7 @@ func (wj *WriteJob) Start(ctx context.Context) error {
 		fmt.Sprintf("--channels=%d", e.Channels),
 	}
 
-    if !e.FfmpegEncode {
+	if !e.FfmpegEncode {
 		// Direct recording (parec only)
 		parecArgs = append(parecArgs, "--file-format="+p.Format, filePath)
 		wj.parecCmd = exec.CommandContext(ctx, "parec", parecArgs...)
@@ -138,21 +138,27 @@ func (wj *WriteJob) Stop() error {
 		_ = wj.parecCmd.Process.Kill()
 	}
 
-	// If re-encoding, wait for ffmpeg to receive EOF, finish encoding, and write file headers
+	// Wait for parec first (captures root errors like bad audio devices)
+	parecErr := wj.parecCmd.Wait()
+
+	// If re-encoding, wait for ffmpeg to finish flushing its buffer
+	var ffmpegErr error
 	if wj.ffmpegCmd != nil && wj.ffmpegCmd.Process != nil {
-		err := wj.ffmpegCmd.Wait()
-		if err != nil && !isCleanExit(err) {
-			stderr := strings.TrimSpace(wj.ffmpegStderr.String())
-			return fmt.Errorf("ffmpeg exited with error: %v | stderr: %s", err, stderr)
+		// If parec failed, ensure ffmpeg also exits:
+		if parecErr != nil {
+			_ = wj.ffmpegCmd.Process.Kill()
 		}
-		return nil
+		ffmpegErr = wj.ffmpegCmd.Wait()
 	}
 
-	// Direct recording mode (parec only)
-	err := wj.parecCmd.Wait()
-	if err != nil && !isCleanExit(err) {
+	if ffmpegErr != nil && !isCleanExit(ffmpegErr) {
+		stderr := strings.TrimSpace(wj.ffmpegStderr.String())
+		return fmt.Errorf("ffmpeg exited with error: %v | stderr: %s", ffmpegErr, stderr)
+	}
+
+	if parecErr != nil && !isCleanExit(parecErr) {
 		stderr := strings.TrimSpace(wj.parecStderr.String())
-		return fmt.Errorf("parec exited with error: %v | stderr: %s", err, stderr)
+		return fmt.Errorf("parec exited with error: %v | stderr: %s", parecErr, stderr)
 	}
 
 	return nil
