@@ -133,7 +133,7 @@ func (wj *WriteJob) Stop() error {
 		if err != nil && (strings.Contains(err.Error(), "signal: killed") || strings.Contains(err.Error(), "signal: interrupt")) {
 			return nil
 		}
-		return err
+		return fmt.Errorf("Failed to wait for ffmpeg to exit: %s", err)
 	}
 
 	// Direct recording mode: wait on parec directly
@@ -141,7 +141,7 @@ func (wj *WriteJob) Stop() error {
 	if err != nil && (strings.Contains(err.Error(), "signal: killed") || strings.Contains(err.Error(), "signal: interrupt")) {
 		return nil
 	}
-	return err
+	return fmt.Errorf("Failed to wait for parec to exit: %s", err)
 }
 
 func (wj *WriteJob) Running() bool {

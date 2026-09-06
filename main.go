@@ -104,7 +104,7 @@ func main() {
 
 	// Run bufferking main logic
 	if err := a.StartListening(ctx); err != nil && err != context.Canceled {
-		fmt.Println(err)
+		fmt.Println("Failed to start listening to DBus signals:", err)
 		return
 	}
 
