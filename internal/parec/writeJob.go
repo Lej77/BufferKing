@@ -79,7 +79,7 @@ func (wj *WriteJob) Start(ctx context.Context) error {
 		"-i", "pipe:0", // Read from stdin
 	}
 
-	if e.Bitrate != "" && strings.ToLower(e.Bitrate) != "lossless" {
+	if e.Bitrate != "" && strings.ToLower(e.Bitrate) != "default" {
 		ffmpegArgs = append(ffmpegArgs, "-b:a", e.Bitrate)
 	}
 

@@ -246,7 +246,7 @@ func userConf(formats, sources, version *bool) (*app.Conf, *signal.Parser) {
 	encD := parec.DefaultEncodeParams()
 	enc := c.Encode
 	flag.BoolVarP(&enc.FfmpegEncode, "ffmpeg-encode", "e", encD.FfmpegEncode, "Use ffmpeg to re-encode the output to support custom bitrate and/or MP3/Opus formats")
-	flag.StringVarP(&enc.Bitrate, "bitrate", "b", encD.Bitrate, "Target audio bitrate (e.g. 160k, 320k); automatically enables --ffmpeg-encode")
+	flag.StringVarP(&enc.Bitrate, "bitrate", "b", encD.Bitrate, "Target audio bitrate (e.g. 160k, 320k, default); automatically enables --ffmpeg-encode")
 	flag.Int64Var(&enc.Channels, "channels", encD.Channels, "Number of channels (1 for mono, 2 for stereo)")
 	flag.Int64Var(&enc.SampleRate, "sample-rate", encD.SampleRate, "Sampling rate in Hz (e.g. 44100, 48000)")
 	flag.StringVar(&enc.ParecFormat, "sample-format", encD.ParecFormat, "Raw PCM capture sample format passed to parec (e.g. s16ne, s16le)")
