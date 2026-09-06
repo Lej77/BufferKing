@@ -23,12 +23,33 @@ type Track struct {
 	MediaPlayer string
 }
 
+// Ensure there are no characters in a string that would be problematic for a filename, replaces them with underscore characters (_).
+func SanitizeFilename(s string) string {
+	r := strings.NewReplacer(
+		"/", "_",
+		"\\", "_",
+		":", "_",
+		"*", "_",
+		"?", "_",
+		"\"", "_",
+		"<", "_",
+		">", "_",
+		"|", "_",
+	)
+	return strings.TrimSpace(r.Replace(s))
+}
+
 func (t *Track) RelPath() string {
 	var ext string
 	if t.Format != "" {
 		ext = "." + t.Format
 	}
-	return filepath.Join(t.Artist, t.Album, fmt.Sprintf("%d - %s%s", t.TrackNumber, t.Title, ext))
+	artist := SanitizeFilename(t.Artist)
+	album := SanitizeFilename(t.Album)
+	title := SanitizeFilename(t.Title)
+
+	filename := fmt.Sprintf("%d - %s%s", t.TrackNumber, title, ext)
+	return filepath.Join(artist, album, filename)
 }
 
 func (t *Track) IsSameTrackAs(other *Track) bool {

@@ -118,7 +118,7 @@ func (wj *WriteJob) FileName() string {
 
 	t := wj.Track
 	t.Format = wj.parec.Format
-	return fmt.Sprintf(".(%d)%d - %s.%s", wj.parec.partsCount, t.TrackNumber, t.Title, t.Format)
+	return fmt.Sprintf(".(%d)%d - %s.%s", wj.parec.partsCount, t.TrackNumber, library.SanitizeFilename(t.Title), t.Format)
 }
 
 func downloadArt(artURL, dstPath string) error {
