@@ -96,32 +96,20 @@ func (wj *WriteJob) Start(ctx context.Context) error {
 	wj.ffmpegCmd = exec.CommandContext(ctx, "ffmpeg", ffmpegArgs...)
 	wj.ffmpegCmd.Stderr = &wj.ffmpegStderr
 
-	pipeReader, pipeWriter := io.Pipe()
-	wj.parecCmd.Stdout = pipeWriter
-	wj.ffmpegCmd.Stdin = pipeReader
+	parecStdout, err := wj.parecCmd.StdoutPipe()
+	if err != nil {
+		return fmt.Errorf("Failed to get stdout for parec command: %s", err)
+	}
+	wj.ffmpegCmd.Stdin = parecStdout
 
 	if err := wj.parecCmd.Start(); err != nil {
-		pipeWriter.Close()
-		pipeReader.Close()
 		return fmt.Errorf("failed starting parec: %w (stderr: %s)", err, strings.TrimSpace(wj.parecStderr.String()))
 	}
 
 	if err := wj.ffmpegCmd.Start(); err != nil {
 		_ = wj.parecCmd.Process.Kill()
-		pipeWriter.Close()
-		pipeReader.Close()
 		return fmt.Errorf("failed starting ffmpeg: %w (stderr: %s)", err, strings.TrimSpace(wj.ffmpegStderr.String()))
 	}
-
-	// Monitor parec: if it exits (or crashes), close the pipe to signal ffmpeg
-	go func() {
-		err := wj.parecCmd.Wait()
-		if err != nil {
-			_ = pipeWriter.CloseWithError(fmt.Errorf("parec failed: %w", err))
-		} else {
-			_ = pipeWriter.Close() // Normal EOF
-		}
-	}()
 
 	return nil
 }
@@ -131,31 +119,40 @@ func (wj *WriteJob) Stop() error {
 		return nil
 	}
 
-	defer func() { wj.stopped = time.Now() }()
+	defer func() {
+		wj.stopped = time.Now()
+		wj.parecCmd = nil
+		wj.ffmpegCmd = nil
+	}()
 
-	// Send interrupt signal to parec to stop audio stream cleanly
+	// Interrupt parec so it stops capturing audio cleanly
 	if err := wj.parecCmd.Process.Signal(os.Interrupt); err != nil {
 		_ = wj.parecCmd.Process.Kill()
 	}
 
-	// Wait for parec first (captures root errors like bad audio devices)
+	// Wait for parec
 	parecErr := wj.parecCmd.Wait()
 
-	// If re-encoding, wait for ffmpeg to finish flushing its buffer
+	// Wait for ffmpeg to finish encoding remaining buffered audio
 	var ffmpegErr error
 	if wj.ffmpegCmd != nil && wj.ffmpegCmd.Process != nil {
-		// If parec failed, ensure ffmpeg also exits:
-		if parecErr != nil {
+		done := make(chan error, 1)
+		go func() {
+			done <- wj.ffmpegCmd.Wait()
+		}()
+
+		select {
+		case ffmpegErr = <-done:
+		case <-time.After(10 * time.Second):
 			_ = wj.ffmpegCmd.Process.Kill()
+			ffmpegErr = fmt.Errorf("ffmpeg process timed out on close")
 		}
-		ffmpegErr = wj.ffmpegCmd.Wait()
 	}
 
 	if ffmpegErr != nil && !isCleanExit(ffmpegErr) {
 		stderr := strings.TrimSpace(wj.ffmpegStderr.String())
 		return fmt.Errorf("ffmpeg exited with error: %v | stderr: %s", ffmpegErr, stderr)
 	}
-
 	if parecErr != nil && !isCleanExit(parecErr) {
 		stderr := strings.TrimSpace(wj.parecStderr.String())
 		return fmt.Errorf("parec exited with error: %v | stderr: %s", parecErr, stderr)
