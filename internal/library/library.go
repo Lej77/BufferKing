@@ -133,7 +133,7 @@ func LoadLibrary(root string) (*Library, error) {
 			// return fmt.Errorf("invalid path: %s %+v", relPath, dirs)
 			return nil
 		}
-		// 0 -> TrackNumber; 1 -> Title; 2-> Format
+		// 1 -> TrackNumber; 2 -> Title; 3-> Format
 		titleParts := re.FindStringSubmatch(dirs[2])
 
 		if len(titleParts) < 3 {
@@ -147,7 +147,7 @@ func LoadLibrary(root string) (*Library, error) {
 		track := &Track{
 			Artist:      dirs[0],
 			Album:       dirs[1],
-			Title:       titleParts[1],
+			Title:       titleParts[2],
 			TrackNumber: int32(tn),
 		}
 

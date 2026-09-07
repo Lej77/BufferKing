@@ -105,6 +105,7 @@ func main() {
 		return
 	}
 	a.Listener.Parser = *p
+	// fmt.Println("Loaded library:", a.Library)
 
 	// Create context, and listen for kill signal
 	ctx, stop := osSignal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
