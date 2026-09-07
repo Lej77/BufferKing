@@ -44,7 +44,7 @@ func (l *Library) GetAlbumKey(t *Track) string {
 	return SanitizeFilename(t.Album)
 }
 func (l *Library) GetTrackKey(t *Track) string {
-	return SanitizeFilename(fmt.Sprintf("%d - %s", t.TrackNumber, t.Title))
+	return fmt.Sprintf("%d - %s", t.TrackNumber, SanitizeFilename(t.Title))
 }
 
 func (l *Library) Stored(t *Track) bool {
@@ -73,7 +73,7 @@ func (l *Library) MarkStored(t *Track) {
 
 		l.Artists[artistKey] = &Artist{
 			Name:   artistKey,
-			Albums: map[string]*Album{artistKey: album},
+			Albums: map[string]*Album{albumKey: album},
 		}
 
 		return
