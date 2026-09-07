@@ -18,7 +18,7 @@ type Artist struct {
 type Album struct {
 	Name string
 	// Tracks holds track titles as keys for fast lookups
-	// Track titles are formated as 'TrackNo - TrackTitle'
+	// Track titles are formated as 'TrackNo - TrackTitle', see GetTrackKey method
 	Tracks map[string]struct{}
 }
 
@@ -37,32 +37,43 @@ type Library struct {
 	sync.Mutex
 }
 
+func (l *Library) GetArtistKey(t *Track) string {
+	return SanitizeFilename(t.Artist)
+}
+func (l *Library) GetAlbumKey(t *Track) string {
+	return SanitizeFilename(t.Album)
+}
+func (l *Library) GetTrackKey(t *Track) string {
+	return SanitizeFilename(fmt.Sprintf("%d - %s", t.TrackNumber, t.Title))
+}
+
 func (l *Library) Stored(t *Track) bool {
-	artists, ok := l.Artists[t.Artist]
+	artists, ok := l.Artists[l.GetArtistKey(t)]
 	if !ok {
 		return false
 	}
-	albums, ok := artists.Albums[t.Album]
+	albums, ok := artists.Albums[l.GetAlbumKey(t)]
 	if !ok {
 		return false
 	}
-	title := fmt.Sprintf("%d - %s", t.TrackNumber, t.Title)
-	_, ok = albums.Tracks[title]
+	_, ok = albums.Tracks[l.GetTrackKey(t)]
 	return ok
 }
 
 func (l *Library) MarkStored(t *Track) {
 	var ok bool
-	title := fmt.Sprintf("%d - %s", t.TrackNumber, t.Title)
+	artistKey := l.GetArtistKey(t)
+	albumKey := l.GetAlbumKey(t)
+	titleKey := l.GetTrackKey(t)
 
 	// Does artist exist?
 	var artist *Artist
-	if artist, ok = l.Artists[t.Artist]; !ok {
-		album := NewAlbum(t.Album, title)
+	if artist, ok = l.Artists[artistKey]; !ok {
+		album := NewAlbum(albumKey, titleKey)
 
-		l.Artists[t.Artist] = &Artist{
-			Name:   t.Artist,
-			Albums: map[string]*Album{t.Album: album},
+		l.Artists[artistKey] = &Artist{
+			Name:   artistKey,
+			Albums: map[string]*Album{artistKey: album},
 		}
 
 		return
@@ -70,35 +81,34 @@ func (l *Library) MarkStored(t *Track) {
 
 	// Does album exist?
 	var album *Album
-	if album, ok = artist.Albums[t.Album]; !ok {
-		artist.Albums[t.Album] = NewAlbum(t.Album, title)
+	if album, ok = artist.Albums[albumKey]; !ok {
+		artist.Albums[albumKey] = NewAlbum(albumKey, titleKey)
 		return
 	}
 
 	// Does track exist?
-	if _, ok = album.Tracks[title]; !ok {
-		album.Tracks[title] = struct{}{}
+	if _, ok = album.Tracks[titleKey]; !ok {
+		album.Tracks[titleKey] = struct{}{}
 		return
 	}
 }
 
 func (l *Library) UnmarkStored(t *Track) {
 	var ok bool
-	title := fmt.Sprintf("%d - %s", t.TrackNumber, t.Title)
 
 	// Does artist exist?
 	var artist *Artist
-	if artist, ok = l.Artists[t.Artist]; !ok {
+	if artist, ok = l.Artists[l.GetArtistKey(t)]; !ok {
 		return
 	}
 
 	// Does album exist?
 	var album *Album
-	if album, ok = artist.Albums[t.Album]; !ok {
+	if album, ok = artist.Albums[l.GetAlbumKey(t)]; !ok {
 		return
 	}
 
-	delete(album.Tracks, title)
+	delete(album.Tracks, l.GetTrackKey(t))
 }
 
 // Unhide the file now that its finished
