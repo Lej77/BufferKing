@@ -62,6 +62,14 @@ func (a *App) Run(ctx context.Context) error {
 				if ts.Started.IsZero() {
 					ts.Started = time.Now()
 				}
+				if ts.Status == signal.None {
+					current, err := a.Listener.GetPlayerStatus(ts.MediaPlayer)
+					if err != nil {
+						fmt.Printf("Failed to check currently playback status for the \"%s\" media player: %s\n", ts.MediaPlayer, err)
+					} else {
+						ts.Status = current
+					}
+				}
 				isPlaying := ts.Status == signal.Play
 
 				l.Lock()
@@ -175,9 +183,6 @@ func (a *App) Run(ctx context.Context) error {
 					lastTS.Status = ts.Status
 				}
 			} else {
-				if ts.Status == signal.None {
-					ts.Status = signal.Pause // assume paused (safer)
-				}
 				ts.SeekEvents = nil // free memory
 				lastTS = ts
 			}

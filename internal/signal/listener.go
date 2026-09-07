@@ -262,3 +262,32 @@ func (l *Listener) ResolvePlayerName(sender string) (string, error) {
 	}
 	return "", fmt.Errorf("player name not found for sender %s", sender)
 }
+
+// Fetch the MPRIS PlaybackStatus directly using a media player's D-Bus name.
+func (l *Listener) GetPlayerStatus(player string) (Status, error) {
+	destination := player
+	if !strings.HasPrefix(player, ":") && !strings.HasPrefix(player, "org.mpris.MediaPlayer2.") {
+		destination = "org.mpris.MediaPlayer2." + player
+	}
+	obj := l.conn.Object(destination, "/org/mpris/MediaPlayer2")
+
+	var status dbus.Variant
+	err := obj.Call("org.freedesktop.DBus.Properties.Get", 0, "org.mpris.MediaPlayer2.Player", "PlaybackStatus").Store(&status)
+	if err != nil {
+		return None, err
+	}
+
+	text, ok := status.Value().(string)
+	if !ok {
+		return None, fmt.Errorf("expected string for PlaybackStatus, got %T", status.Value())
+	}
+
+	switch text {
+	case "Playing":
+		return Play, nil
+	case "Paused", "Stopped":
+		return Paused, nil
+	default:
+		return None, fmt.Errorf("Unknown playback status: %s", text)
+	}
+}
