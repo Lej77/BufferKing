@@ -26,7 +26,7 @@ func NewAlbum(albumName, trackName string) *Album {
 	return &Album{
 		Name: albumName,
 		Tracks: map[string]struct{}{
-			trackName: struct{}{},
+			trackName: {},
 		},
 	}
 }
@@ -147,7 +147,7 @@ func LoadLibrary(root string) (*Library, error) {
 		track := &Track{
 			Artist:      dirs[0],
 			Album:       dirs[1],
-			Title:       titleParts[1] + " - " + titleParts[2],
+			Title:       titleParts[1],
 			TrackNumber: int32(tn),
 		}
 
