@@ -27,6 +27,14 @@ func main() {
 	retCode := 1
 	defer func() { os.Exit(retCode) }()
 
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Printf("[CRITICAL] Panic: %s\n", r)
+			fmt.Printf("[STACK TRACE]\n%s", debug.Stack())
+			retCode = 2
+		}
+	}()
+
 	// Does the machine have the parec binary for us to use?
 	if !parec.Available() {
 		fmt.Println("parec or pactl installation not found")
