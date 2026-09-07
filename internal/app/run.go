@@ -156,6 +156,10 @@ func (a *App) Run(ctx context.Context) error {
 						a.Print(colorYellow, IgnoredSeek+seekInfo, nil)
 					}
 				}
+
+			case signal.None:
+			default:
+				fmt.Println("Unhandled state change: ", diff)
 			}
 
 			if diff != signal.NewTrack && lastTS != nil && lastTS.Track.MediaPlayer == ts.Track.MediaPlayer {
@@ -174,7 +178,7 @@ func (a *App) Run(ctx context.Context) error {
 				if ts.Status == signal.None {
 					ts.Status = signal.Pause // assume paused (safer)
 				}
-				lastTS.SeekEvents = nil // free memory
+				ts.SeekEvents = nil // free memory
 				lastTS = ts
 			}
 		}

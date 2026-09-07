@@ -30,7 +30,7 @@ func (s Status) String() string {
 	case Pause:
 		return "Pause"
 	case None:
-		return ""
+		return "No Change"
 	case Paused:
 		return "Paused Playing"
 	case Resumed:
@@ -145,19 +145,20 @@ func (t *TrackSignal) Compare(tt *TrackSignal) Status {
 			return NewTrack
 		}
 	}
-	if tt.HasSeek {
+	if tt.HasSeek || len(tt.SeekEvents) > 0 {
 		return Seek
 	}
 	if !tt.Started.IsZero() && !tt.Started.Equal(t.Started) {
 		return NewTrack
 	}
-	if t.Status == None {
-		return tt.Status * -2 // (-tt.Status) i.e. opposite state  -  tt.Status
-	}
 	if tt.Status == None {
 		return None
 	}
-	return t.Status - tt.Status
+	oldStatus := t.Status
+	if oldStatus == None {
+		oldStatus = -tt.Status // opposite of new state
+	}
+	return oldStatus - tt.Status
 }
 
 func (t *TrackSignal) String() string {

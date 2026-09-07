@@ -97,7 +97,7 @@ func (a *App) LoadConf() error {
 
 	a.Library, err = library.LoadLibrary(c.Root)
 	if err != nil {
-		return fmt.Errorf("Failed to load existing library: %s", err)
+		return fmt.Errorf("Failed to load existing library: %w", err)
 	}
 
 	a.Listener = &signal.Listener{

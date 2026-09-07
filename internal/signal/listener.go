@@ -84,6 +84,7 @@ func (l *Listener) Start(ctx context.Context) error {
 	go func() {
 		defer func() {
 			_ = l.Stop()
+			// fmt.Println("Stopped listening for DBus signals")
 		}()
 
 		var (
