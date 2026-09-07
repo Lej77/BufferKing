@@ -149,7 +149,7 @@ func (l *Listener) Start(ctx context.Context) error {
 				prevPlayer = player
 
 				// Filter out signals from ignored media players
-				if (len(l.MediaPlayerWhitelist) != 0) {
+				if len(l.MediaPlayerWhitelist) != 0 {
 					isAllowed := false
 					playerLowerCase := strings.ToLower(player)
 					for _, allowedPlayer := range l.MediaPlayerWhitelist {
@@ -168,17 +168,23 @@ func (l *Listener) Start(ctx context.Context) error {
 				// Every signal should be associated with a media player:
 				ts.Track.MediaPlayer = player
 
-				// Merge updates
-				if latest.Track.MediaPlayer != "" && latest.Track.MediaPlayer != ts.Track.MediaPlayer && hasPending {
-					// can't merge updates from different media players, should be very rare to switch between players
-					hasPending = false
-					emitSignal()
+				if hasPending {
+					// can't merge updates from different media players, should be very rare to switch between players:
+					if (latest.Track.MediaPlayer != "" && latest.Track.MediaPlayer != ts.Track.MediaPlayer) ||
+						// Must stop/start recording on play/pause:
+						(latest.Status != None && ts.Status != None && latest.Status != ts.Status) {
+
+						hasPending = false
+						emitSignal()
+					}
 				}
+
+				// Merge updates
 				if ts.Track.Title != "" {
 					if latest.Track.IsSameTrackAs(&ts.Track) {
 						latest.Track.UpdateTrack(&ts.Track)
 					} else {
-						if (hasPending) {
+						if hasPending {
 							// Can't merge info from different tracks
 							hasPending = false
 							emitSignal()

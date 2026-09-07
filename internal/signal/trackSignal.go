@@ -151,7 +151,12 @@ func (t *TrackSignal) Compare(tt *TrackSignal) Status {
 	if !tt.Started.IsZero() && !tt.Started.Equal(t.Started) {
 		return NewTrack
 	}
-
+	if t.Status == None {
+		return tt.Status * -2 // (-tt.Status) i.e. opposite state  -  tt.Status
+	}
+	if tt.Status == None {
+		return None
+	}
 	return t.Status - tt.Status
 }
 

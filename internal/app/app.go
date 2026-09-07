@@ -187,6 +187,7 @@ const (
 	TrackFoundIgnoring    = "track found in library, ignoring:"
 	UrlDisallowedIgnoring = "track from disallowed URL, ignoring:"
 	TrackWithoutMetadata  = "track with unknown metadata, ignoring:"
+	NewTrackWhilePaused   = "track should be recorded but player was paused, ignoring:"
 	TrackStartedRecording = "started recording new track:"
 	TrackUnableToResume   = "unable to resume recording incomplete track due to pause:"
 )

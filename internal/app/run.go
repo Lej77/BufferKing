@@ -55,6 +55,10 @@ func (a *App) Run(ctx context.Context) error {
 					// Likely did seek to beginning of track, re-use info
 					ts.Track = lastTS.Track
 				}
+				if ts.Status == signal.None && lastTS != nil && lastTS.Track.MediaPlayer == ts.Track.MediaPlayer {
+					ts.Status = lastTS.Status
+				}
+				isPlaying := ts.Status == signal.Play
 
 				l.Lock()
 				stored := l.Stored(&ts.Track)
@@ -71,6 +75,9 @@ func (a *App) Run(ctx context.Context) error {
 				} else if !a.Conf.IsAllowedDomain(ts.Track.URL) {
 					finishedWJ, err = p.StopWriteJob()
 					printFunc = a.NewPrinter(colorYellow, UrlDisallowedIgnoring, &ts.Track)
+				} else if !isPlaying {
+					finishedWJ, err = p.StopWriteJob()
+					printFunc = a.NewPrinter(colorYellow, NewTrackWhilePaused, &ts.Track)
 				} else {
 					finishedWJ, err = p.NewWriteJob(ctx, &ts.Track, true)
 					printFunc = a.NewPrinter(colorRed, TrackStartedRecording, &ts.Track)
@@ -162,6 +169,10 @@ func (a *App) Run(ctx context.Context) error {
 					lastTS.HasSeek = true
 				}
 			} else {
+				if ts.Status == signal.None {
+					ts.Status = signal.Pause // assume paused (safer)
+				}
+				lastTS.SeekEvents = nil // free memory
 				lastTS = ts
 			}
 		}

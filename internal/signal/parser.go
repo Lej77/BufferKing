@@ -86,7 +86,7 @@ func (p *Parser) Parse(sign *dbus.Signal) (*TrackSignal, error) {
 	hasStatus := false
 
 	// Extract Playback Status if present
-	var stat Status = Play
+	var stat Status = None
 	if statusVar, ok := resp[p.StatusKey]; ok && statusVar.Value() != nil {
 		if sstat, ok := statusVar.Value().(string); ok {
 			hasStatus = true
