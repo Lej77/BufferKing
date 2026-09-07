@@ -49,14 +49,18 @@ func (a *App) Run(ctx context.Context) error {
 			// fmt.Println("Buffered Signal - Diff is ", diff, " - Info ", ts)
 			switch diff {
 			case signal.NewTrack, signal.SwitchedPlayer:
+				// Inherit from previous state:
+				if lastTS != nil && lastTS.Track.MediaPlayer == ts.Track.MediaPlayer {
+					if ts.Status == signal.None {
+						ts.Status = lastTS.Status
+					}
+					if !ts.Started.IsZero() && ts.Title == "" {
+						// Likely preformed seek to beginning of track, re-use info
+						ts.Track = lastTS.Track
+					}
+				}
 				if ts.Started.IsZero() {
 					ts.Started = time.Now()
-				} else if ts.Title == "" && lastTS != nil && lastTS.Track.MediaPlayer == ts.Track.MediaPlayer {
-					// Likely did seek to beginning of track, re-use info
-					ts.Track = lastTS.Track
-				}
-				if ts.Status == signal.None && lastTS != nil && lastTS.Track.MediaPlayer == ts.Track.MediaPlayer {
-					ts.Status = lastTS.Status
 				}
 				isPlaying := ts.Status == signal.Play
 
@@ -152,21 +156,19 @@ func (a *App) Run(ctx context.Context) error {
 						a.Print(colorYellow, IgnoredSeek+seekInfo, nil)
 					}
 				}
-
-			case signal.None:
 			}
 
 			if diff != signal.NewTrack && lastTS != nil && lastTS.Track.MediaPlayer == ts.Track.MediaPlayer {
 				// preserve old info except for new changes
 				lastTS.Track.UpdateTrack(&ts.Track)
-				if ts.Status != signal.None {
-					lastTS.Status = ts.Status
-				}
 				if !ts.Started.IsZero() {
 					lastTS.Started = ts.Started
 				}
 				if ts.HasSeek {
 					lastTS.HasSeek = true
+				}
+				if ts.Status != signal.None {
+					lastTS.Status = ts.Status
 				}
 			} else {
 				if ts.Status == signal.None {

@@ -59,11 +59,11 @@ func (p *Parser) Parse(sign *dbus.Signal) (*TrackSignal, error) {
 		if len(sign.Body) > 0 {
 			seek := castToInt64(sign.Body[0])
 			if seek == 0 {
-				return &TrackSignal{HasSeek: false, Started: time.Now()}, nil
+				return &TrackSignal{HasSeek: false, Started: time.Now(), Status: None}, nil
 			}
 			seekEvents = append(seekEvents, SeekEvent{Time: time.Now(), Value: seek})
 		}
-		return &TrackSignal{HasSeek: true, SeekEvents: seekEvents}, nil
+		return &TrackSignal{HasSeek: true, SeekEvents: seekEvents, Status: None}, nil
 	}
 	if sign.Name != "org.freedesktop.DBus.Properties.PropertiesChanged" {
 		// ignore other signals
