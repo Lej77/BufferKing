@@ -141,11 +141,9 @@ func (a *App) finishWJ(wj *parec.WriteJob, saveIncomplete bool, failMsg string) 
 				}
 				l.Unlock()
 			} else if !a.Conf.KeepPartials {
-				path := filepath.Join(a.Conf.Root,
-					wj.Track.Artist,
-					wj.Track.Album,
-					wj.FileName(),
-				)
+				writePath := filepath.Join(a.Conf.Root, wj.Track.RelPath())
+				dir := filepath.Dir(writePath)
+				path := filepath.Join(dir, wj.FileName())
 				if err := os.Remove(path); err != nil {
 					return err
 				}
